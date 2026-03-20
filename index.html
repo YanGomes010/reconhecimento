@@ -3,138 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reconhecimento Facial e GPS</title>
+    <title>Autenticação Biométrica Ativa</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Utilizando a versão otimizada do face-api.js -->
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
     <style>
-        .canvas-container { position: relative; display: flex; justify-content: center; width: 100%; max-width: 640px; margin: 0 auto;}
-        canvas { position: absolute; top: 0; left: 0; }
+        .canvas-container { position: relative; display: flex; justify-content: center; width: 100%; max-width: 640px; margin: 0 auto; background-color: #000; border-radius: 1.5rem; overflow: hidden;}
+        video, canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
         .fade-in { animation: fadeIn 0.5s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* O overlay ovalado estilo gov.br */
+        .guide-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            background: radial-gradient(circle at center, transparent 30%, rgba(15, 23, 42, 0.85) 60%);
+        }
+        .guide-oval {
+            width: 220px;
+            height: 300px;
+            border-radius: 50%;
+            border: 4px dashed rgba(255, 255, 255, 0.5);
+            transition: all 0.3s ease;
+            box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.7); /* Efeito de escurecer as bordas */
+        }
+        /* Classes dinâmicas para o guia */
+        .guide-perfect { border-color: #10B981; border-style: solid; box-shadow: 0 0 20px #10B981, 0 0 0 9999px rgba(15, 23, 42, 0.7); }
+        .guide-error { border-color: #EF4444; border-style: solid; }
+        
     </style>
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans min-h-screen p-4 md:p-8 flex justify-center">
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen p-4 md:p-8 flex justify-center">
 
     <div class="max-w-3xl w-full space-y-6">
         
-        <!-- Cabeçalho -->
-        <div class="text-center space-y-2">
-            <h1 class="text-3xl md:text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
-                Sistema de Verificação de Identidade
+        <div class="text-center space-y-2 mb-10">
+            <h1 class="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 tracking-tight">
+                Portal de Acesso Biométrico
             </h1>
-            <p class="text-slate-400">Reconhecimento Facial IA + Captura de Localização GPS</p>
+            <p class="text-slate-400 text-lg">Validação de identidade avançada com enquadramento facial.</p>
         </div>
 
-        <!-- Painel de Status / Carregamento -->
-        <div id="status-panel" class="bg-slate-800 border border-slate-700 rounded-2xl p-6 text-center shadow-lg transition-all duration-300">
-            <div id="loading-spinner" class="inline-block w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <h2 id="status-title" class="text-xl font-bold text-white mb-2">A iniciar o Sistema...</h2>
-            <p id="status-message" class="text-slate-400">A descarregar modelos de IA de alta precisão (SSD MobileNet).</p>
+        <!-- Painel de Loading -->
+        <div id="status-panel" class="bg-slate-800 border border-slate-700 rounded-3xl p-8 text-center shadow-2xl transition-all duration-300">
+            <div id="loading-spinner" class="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-5"></div>
+            <h2 id="status-title" class="text-2xl font-bold text-white mb-3">A carregar IA...</h2>
+            <p id="status-message" class="text-slate-400">Estamos a preparar os modelos de reconhecimento facial.</p>
         </div>
 
-        <!-- Painel Principal (Escondido até a IA carregar) -->
-        <div id="main-app" class="hidden space-y-6 fade-in">
+        <div id="main-app" class="hidden space-y-10 fade-in">
             
-            <!-- Passo 1: Imagem de Referência -->
-            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg flex items-center gap-6">
-                <img id="ref-image" src="IMG-20260317-WA0012.jpg" crossorigin="anonymous" class="w-24 h-24 rounded-full object-cover border-4 border-emerald-500 shadow-md">
-                <div>
-                    <h3 class="text-lg font-bold text-white flex items-center gap-2">
-                        <span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span>
-                        Rosto Registado
-                    </h3>
-                    <p class="text-sm text-slate-400">A IA extraiu as características faciais desta pessoa com sucesso.</p>
+            <!-- PASSO 1: REGISTO -->
+            <div id="step-register" class="bg-slate-800 border border-slate-700 rounded-3xl p-8 shadow-xl">
+                <div class="flex items-center gap-4 mb-6 pb-4 border-b border-slate-700">
+                    <div class="p-3 bg-blue-950 rounded-full text-blue-400 text-2xl font-bold">1</div>
+                    <h3 class="text-2xl font-bold text-white">Registe a sua Fotografia</h3>
+                </div>
+                
+                <div class="flex flex-col md:flex-row items-center gap-8">
+                    <div class="relative w-32 h-32 flex-shrink-0">
+                        <img id="ref-image-preview" src="" class="w-full h-auto hidden rounded-full object-cover border-4 border-slate-600 shadow-lg bg-slate-700">
+                        <div id="ref-image-placeholder" class="w-full h-full rounded-full bg-slate-700 border-4 border-dashed border-slate-500 flex items-center justify-center text-slate-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-grow w-full">
+                        <p class="text-slate-300 mb-4">Selecione uma foto do seu rosto em boas condições de luz para usar como referência no sistema.</p>
+                        <label class="block w-full cursor-pointer group">
+                            <input type="file" id="ref-upload" accept="image/*" class="hidden">
+                            <div class="w-full py-4 px-6 border-2 border-dashed border-slate-600 group-hover:border-blue-500 rounded-2xl text-center transition-colors bg-slate-900/50 flex items-center justify-center gap-3">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                </svg>
+                                <span id="upload-text" class="text-blue-400 font-semibold group-hover:text-blue-300">Carregar Fotografia de Referência</span>
+                            </div>
+                        </label>
+                        <p id="ref-status-msg" class="text-xs mt-3 h-4 text-center"></p>
+                    </div>
                 </div>
             </div>
 
-            <!-- Passo 2: Captura de Localização -->
-            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg">
-                <h3 class="text-lg font-bold text-white mb-4">📍 Localização do Utilizador</h3>
+            <!-- PASSO 2: VERIFICAÇÃO ATIVA (ESTILO GOV.BR) -->
+            <div id="step-verify" class="hidden bg-slate-800 border border-slate-700 rounded-3xl p-8 shadow-xl fade-in">
+                <div class="flex items-center gap-4 mb-6 pb-4 border-b border-slate-700">
+                    <div class="p-3 bg-emerald-950 rounded-full text-emerald-400 text-2xl font-bold">2</div>
+                    <h3 class="text-2xl font-bold text-white">Verificação de Identidade</h3>
+                </div>
                 
-                <button id="btn-location" class="w-full sm:w-auto px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg shadow-md transition-colors flex items-center justify-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                <div class="text-center mb-6">
+                    <div id="instruction-box" class="bg-slate-900 border border-blue-500/50 p-4 rounded-xl inline-block w-full transition-colors duration-300">
+                        <h3 class="text-2xl font-bold text-white" id="verify-title">A aguardar câmara...</h3>
+                        <p class="text-slate-400 text-sm mt-1" id="verify-subtitle">Siga as instruções para enquadrar o seu rosto.</p>
+                    </div>
+                </div>
+
+                <!-- Container do Vídeo Proporcional -->
+                <div class="relative w-full aspect-[3/4] md:aspect-video rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-700 bg-black">
+                    <video id="webcam-video" autoplay muted playsinline class="w-full h-full object-cover"></video>
+                    <!-- O Canvas agora fica escondido para os olhos do utilizador (UI mais limpa), é usado só para lógica -->
+                    <canvas id="overlay-canvas" class="hidden"></canvas>
+                    
+                    <!-- Overlay Oval de Enquadramento -->
+                    <div class="guide-overlay">
+                        <div id="face-guide" class="guide-oval"></div>
+                    </div>
+                </div>
+                
+                <div class="mt-6 flex justify-center">
+                    <button id="btn-cancel" class="text-slate-500 hover:text-slate-300 underline text-sm transition-colors">
+                        Cancelar e tentar outra foto
+                    </button>
+                </div>
+            </div>
+            
+            <!-- RESULTADO FINAL: SUCESSO -->
+            <div id="success-screen" class="hidden bg-slate-900 border-4 border-emerald-500 rounded-3xl p-10 text-center shadow-2xl fade-in">
+                <div class="w-24 h-24 rounded-full bg-emerald-600 flex items-center justify-center mx-auto mb-6 shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
                     </svg>
-                    Capturar Localização Atual
+                </div>
+                <h2 class="text-4xl font-extrabold text-white mb-4 track-tight">Identidade Validada!</h2>
+                <p class="text-xl text-emerald-300 font-medium mb-8">O enquadramento facial e a identificação biométrica foram concluídos com sucesso.</p>
+                
+                <p class="text-slate-500 text-sm">Este é o fim da simulação de segurança avançada.</p>
+                
+                <!-- Secção da Foto Capturada (Opcional) -->
+                <div class="mt-6">
+                    <button id="btn-toggle-photo" class="text-emerald-400 hover:text-emerald-300 underline text-sm transition-colors">
+                        Ver foto da validação
+                    </button>
+                    
+                    <div id="captured-photo-section" class="hidden mt-6 bg-slate-800 p-6 rounded-2xl border border-slate-700 fade-in">
+                        <p class="text-sm text-slate-400 mb-4 font-medium">Comparação Biométrica (Registo vs. Tempo Real)</p>
+                        <div class="flex flex-row justify-center items-center gap-6">
+                            <div class="flex flex-col items-center">
+                                <img id="final-ref-img" src="" class="w-24 h-24 rounded-full object-cover border-4 border-slate-600 shadow-md">
+                                <span class="text-xs text-slate-400 mt-2 font-semibold">Registo</span>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                            </svg>
+                            <div class="flex flex-col items-center">
+                                <img id="final-captured-img" src="" class="w-24 h-24 rounded-full object-cover border-4 border-emerald-500 shadow-lg">
+                                <span class="text-xs text-emerald-400 mt-2 font-bold">Validação</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button onclick="location.reload()" class="mt-8 px-8 py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl transition-colors shadow-lg">
+                    Iniciar Novo Teste
                 </button>
-
-                <div id="location-result" class="hidden mt-4 bg-slate-900 p-4 rounded-lg border border-slate-700">
-                    <p class="text-sm text-slate-400">Coordenadas identificadas:</p>
-                    <p id="coords-text" class="text-lg font-mono text-emerald-400 font-bold tracking-wider mt-1"></p>
-                    <a id="map-link" href="#" target="_blank" class="inline-block mt-3 text-sm text-blue-400 hover:text-blue-300 underline">
-                        Abrir no Google Maps
-                    </a>
-                </div>
-                <p id="location-error" class="hidden mt-4 text-red-400 text-sm font-medium"></p>
-            </div>
-
-            <!-- Passo 3: Escolha de Verificação -->
-            <div class="bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg" id="verification-step">
-                <h3 class="text-lg font-bold text-white mb-4">📷 Verificar Identidade</h3>
-                <p class="text-slate-400 text-sm mb-6">Escolha como deseja verificar a identidade:</p>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Botão Webcam -->
-                    <button id="btn-webcam" class="py-4 border-2 border-slate-600 hover:border-emerald-500 rounded-xl text-center transition-colors bg-slate-900/50 flex flex-col items-center gap-2 group">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-400 group-hover:text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                        <span class="text-slate-300 font-medium group-hover:text-emerald-400">Usar Webcam (Tempo Real)</span>
-                    </button>
-
-                    <!-- Botão Upload -->
-                    <label class="cursor-pointer py-4 border-2 border-slate-600 hover:border-blue-500 rounded-xl text-center transition-colors bg-slate-900/50 flex flex-col items-center gap-2 group">
-                        <input type="file" id="verify-upload" accept="image/*" class="hidden">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-400 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                        </svg>
-                        <span class="text-slate-300 font-medium group-hover:text-blue-400">Enviar Fotografia</span>
-                    </label>
-                </div>
-            </div>
-
-            <!-- Resultado da Verificação (Webcam ou Imagem) -->
-            <div id="result-panel" class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-6 shadow-lg text-center fade-in">
-                <h3 class="text-xl font-bold mb-4 text-blue-400" id="result-title">A analisar...</h3>
-                
-                <!-- Container de Média (Onde aparece o vídeo ou a imagem) -->
-                <div id="media-container" class="canvas-container rounded-lg overflow-hidden border-2 border-slate-600 shadow-xl bg-black">
-                    <!-- Imagem para upload -->
-                    <img id="query-image" class="w-full h-auto hidden" alt="Foto para verificação">
-                    
-                    <!-- Vídeo para Webcam -->
-                    <video id="webcam-video" autoplay muted playsinline class="w-full h-auto hidden"></video>
-                    
-                    <!-- Canvas de desenho -->
-                    <canvas id="overlay-canvas"></canvas>
-                </div>
-                
-                <!-- AÇÃO FINAL: Botão de Confirmar (Escondido até a IA identificar a pessoa) -->
-                <div id="action-panel" class="hidden mt-6 flex justify-center fade-in">
-                    <button id="btn-submit" class="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-400 hover:to-green-500 text-white font-bold rounded-xl shadow-lg transition-transform transform hover:scale-105 flex items-center justify-center gap-3 text-lg animate-bounce">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                        </svg>
-                        Confirmar Identidade e Avançar
-                    </button>
-                </div>
-
-                <div class="mt-4 flex justify-center">
-                    <button id="btn-stop-webcam" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg hidden transition-colors text-sm">
-                        Cancelar e Desligar Câmara
-                    </button>
-                </div>
-                
-                <!-- Mensagem Final de Sucesso -->
-                <div id="success-message" class="hidden mt-6 p-6 bg-emerald-900/50 border border-emerald-500 rounded-xl">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-emerald-400 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <h4 class="text-2xl font-bold text-white mb-2">Processo Concluído!</h4>
-                    <p class="text-slate-300">A identidade foi confirmada e os dados foram validados com sucesso para o sistema.</p>
-                </div>
-
             </div>
 
         </div>
@@ -144,317 +171,299 @@
         const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
         let faceMatcher = null;
         let webcamStream = null;
-        let detectionInterval = null;
+        let detectionTimeout = null;
+        let isSuccessfullyAuthenticated = false;
 
         // Elementos UI
         const statusPanel = document.getElementById('status-panel');
         const mainApp = document.getElementById('main-app');
-        const refImage = document.getElementById('ref-image');
         
-        const btnLocation = document.getElementById('btn-location');
-        const locationResult = document.getElementById('location-result');
-        const coordsText = document.getElementById('coords-text');
-        const mapLink = document.getElementById('map-link');
-        const locationError = document.getElementById('location-error');
+        // Elementos Registo
+        const stepRegister = document.getElementById('step-register');
+        const refUpload = document.getElementById('ref-upload');
+        const refImagePreview = document.getElementById('ref-image-preview');
+        const refImagePlaceholder = document.getElementById('ref-image-placeholder');
+        const uploadText = document.getElementById('upload-text');
+        const refStatusMsg = document.getElementById('ref-status-msg');
 
-        const btnWebcam = document.getElementById('btn-webcam');
-        const btnStopWebcam = document.getElementById('btn-stop-webcam');
-        const verifyUpload = document.getElementById('verify-upload');
-        const resultPanel = document.getElementById('result-panel');
-        const queryImage = document.getElementById('query-image');
+        // Elementos Verificação
+        const stepVerify = document.getElementById('step-verify');
+        const verifyTitle = document.getElementById('verify-title');
+        const verifySubtitle = document.getElementById('verify-subtitle');
+        const instructionBox = document.getElementById('instruction-box');
         const webcamVideo = document.getElementById('webcam-video');
-        const overlayCanvas = document.getElementById('overlay-canvas');
-        const resultTitle = document.getElementById('result-title');
+        const faceGuide = document.getElementById('face-guide');
+        const btnCancel = document.getElementById('btn-cancel');
         
-        // Elementos da Ação Final
-        const actionPanel = document.getElementById('action-panel');
-        const btnSubmit = document.getElementById('btn-submit');
-        const successMessage = document.getElementById('success-message');
-        const mediaContainer = document.getElementById('media-container');
-        const verificationStep = document.getElementById('verification-step');
+        // Elementos Sucesso
+        const successScreen = document.getElementById('success-screen');
 
-        // 1. CARREGAR MODELOS 
-        async function loadModels() {
-            await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-            await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-            await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+        // Função utilitária para cortar a imagem exatamente no rosto (Estilo Passaporte)
+        function cropFaceToDataURL(source, box, isVideo = false) {
+            const padX = box.width * 0.4;
+            const padYTop = box.height * 0.6;
+            const padYBot = box.height * 0.4;
+
+            const sourceW = isVideo ? source.videoWidth : source.width;
+            const sourceH = isVideo ? source.videoHeight : source.height;
+
+            const x = Math.max(0, box.x - padX);
+            const y = Math.max(0, box.y - padYTop);
+            const w = Math.min(sourceW - x, box.width + padX * 2);
+            const h = Math.min(sourceH - y, box.height + padYTop + padYBot);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = w;
+            canvas.height = h;
+            canvas.getContext('2d').drawImage(source, x, y, w, h, 0, 0, w, h);
+            return canvas.toDataURL('image/jpeg');
         }
 
-        // 2. PROCESSAR IMAGEM DE REFERÊNCIA
-        async function processReference(imageElement) {
-            const detection = await faceapi.detectSingleFace(imageElement, new faceapi.SsdMobilenetv1Options())
+        // 1. CARREGAR MODELOS
+        async function loadModels() {
+            try {
+                // SSD para registo forte, TinyFace para webcam rapida em tempo real
+                await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+                console.log("Modelos de IA carregados.");
+                statusPanel.classList.add('hidden');
+                mainApp.classList.remove('hidden');
+            } catch (err) {
+                console.error(err);
+                document.getElementById('status-title').textContent = "Erro na IA";
+                document.getElementById('status-message').textContent = "Não foi possível carregar os modelos. Verifique a internet.";
+            }
+        }
+
+        // ==========================================
+        // LÓGICA DE REGISTO (PASSO 1)
+        // ==========================================
+        refUpload.addEventListener('change', async (e) => {
+            if (!e.target.files.length) return;
+            const file = e.target.files[0];
+            
+            uploadText.textContent = "A analisar foto...";
+            refStatusMsg.textContent = "A aguardar validação biométrica...";
+            refStatusMsg.className = "text-xs mt-3 h-4 text-center text-slate-400";
+
+            const img = await faceapi.bufferToImage(file);
+            refImagePreview.src = img.src;
+            refImagePreview.classList.remove('hidden');
+            refImagePlaceholder.classList.add('hidden');
+
+            const detection = await faceapi.detectSingleFace(img, new faceapi.SsdMobilenetv1Options())
                                            .withFaceLandmarks()
                                            .withFaceDescriptor();
 
             if (detection) {
+                // NOVO: Validação de Qualidade da Foto de Registo
+                const faceAreaRatio = (detection.detection.box.width * detection.detection.box.height) / (img.width * img.height);
+                if (faceAreaRatio < 0.08) {
+                    uploadText.textContent = "❌ Foto Inválida";
+                    refStatusMsg.textContent = "O rosto está muito longe. Envie uma foto tipo passe focada no rosto.";
+                    refStatusMsg.className = "text-xs mt-3 h-4 text-center text-red-400";
+                    refImagePreview.classList.add('hidden');
+                    refImagePlaceholder.classList.remove('hidden');
+                    refUpload.value = '';
+                    return;
+                }
+
                 faceMatcher = new faceapi.FaceMatcher([
-                    new faceapi.LabeledFaceDescriptors('Sua Identidade', [detection.descriptor])
-                ], 0.55); // Rigor de 55%
+                    new faceapi.LabeledFaceDescriptors('Utilizador Registado', [detection.descriptor])
+                ], 0.45); // Rigor aumentado para 45% de margem (Alta Segurança)
 
-                statusPanel.classList.add('hidden');
-                mainApp.classList.remove('hidden');
-            } else {
-                document.getElementById('status-title').textContent = "❌ Rosto não detetado";
-                document.getElementById('status-title').classList.add('text-red-400');
-                document.getElementById('status-message').textContent = "A IA não conseguiu encontrar um rosto claro na imagem original. Tente recortar a foto.";
-                document.getElementById('loading-spinner').classList.add('hidden');
-            }
-        }
+                // Extrai apenas o rosto para a interface (Corte Perfeito)
+                const croppedFaceDataUrl = cropFaceToDataURL(img, detection.detection.box, false);
+                refImagePreview.src = croppedFaceDataUrl;
+                document.getElementById('final-ref-img').src = croppedFaceDataUrl;
 
-        async function init() {
-            try {
-                await loadModels();
+                uploadText.textContent = "✓ Foto Registada!";
+                refStatusMsg.textContent = "Rosto identificado. A preparar sistema avançado...";
+                refStatusMsg.className = "text-xs mt-3 h-4 text-center text-emerald-400";
                 
-                // PREVENÇÃO DO ERRO: Garantir que a imagem carrega totalmente e as dimensões existem
-                if (!refImage.complete) {
-                    await new Promise((resolve, reject) => {
-                        refImage.onload = resolve;
-                        refImage.onerror = reject;
-                    });
-                }
+                setTimeout(startVerificationFlow, 1500);
+            } else {
+                uploadText.textContent = "❌ Erro no Registo";
+                refStatusMsg.textContent = "Não encontrámos um rosto claro na foto. Tente outra.";
+                refStatusMsg.className = "text-xs mt-3 h-4 text-center text-red-400";
+                refImagePreview.classList.add('hidden');
+                refImagePlaceholder.classList.remove('hidden');
+                refUpload.value = ''; 
+            }
+        });
 
-                if (!refImage.naturalWidth || !refImage.naturalHeight) {
-                    throw new Error("A imagem de referência tem dimensões nulas.");
-                }
+        // ==========================================
+        // LÓGICA DE ENQUADRAMENTO ATIVO (PASSO 2)
+        // ==========================================
+        async function startVerificationFlow() {
+            if (!faceMatcher) return;
+            isSuccessfullyAuthenticated = false;
 
-                await processReference(refImage);
+            stepRegister.classList.add('hidden');
+            stepVerify.classList.remove('hidden');
+
+            try {
+                // Tenta carregar câmara frontal preferencialmente
+                webcamStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user" }, 
+                    audio: false 
+                });
+                webcamVideo.srcObject = webcamStream;
+                updateInstructions("Por favor, posicione-se", "Enquadre o seu rosto na marcação oval.", "normal");
             } catch (err) {
-                console.error("Erro na inicialização:", err);
-                document.getElementById('status-title').textContent = "❌ Erro ao Carregar Imagem";
-                document.getElementById('status-title').classList.add('text-red-400');
-                document.getElementById('status-message').innerHTML = "Não foi possível carregar a imagem de referência (<b>IMG-20260317-WA0012.jpg</b>). Verifique se iniciou o servidor local.";
-                document.getElementById('loading-spinner').classList.add('hidden');
+                console.error(err);
+                updateInstructions("❌ Erro de Câmara", "Não foi possível aceder à sua webcam.", "error");
             }
         }
 
-        // 3. CAPTURA DE LOCALIZAÇÃO (GPS)
-        btnLocation.addEventListener('click', () => {
-            btnLocation.disabled = true;
-            btnLocation.innerHTML = `A procurar satélites...`;
-            locationError.classList.add('hidden');
-
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => {
-                        const lat = position.coords.latitude;
-                        const lng = position.coords.longitude;
-                        coordsText.textContent = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-                        mapLink.href = `https://www.google.com/maps?q=${lat},${lng}`;
-                        locationResult.classList.remove('hidden');
-                        btnLocation.innerHTML = `✅ Localização Capturada`;
-                        btnLocation.classList.replace('bg-indigo-600', 'bg-emerald-600');
-                    },
-                    (error) => {
-                        btnLocation.disabled = false;
-                        btnLocation.innerHTML = `Capturar Localização Atual`;
-                        locationError.classList.remove('hidden');
-                        locationError.textContent = "Erro: Permissão negada ou localização indisponível.";
-                    }
-                );
-            }
-        });
-
-        // ==========================================
-        // LÓGICA DE VERIFICAÇÃO COM WEBCAM
-        // ==========================================
-        btnWebcam.addEventListener('click', async () => {
-            queryImage.classList.add('hidden');
-            webcamVideo.classList.remove('hidden');
-            resultPanel.classList.remove('hidden');
-            btnStopWebcam.classList.remove('hidden');
-            actionPanel.classList.add('hidden');
-            successMessage.classList.add('hidden');
-            mediaContainer.classList.remove('hidden');
+        // Atualiza a interface gráfica de instruções
+        function updateInstructions(title, subtitle, state) {
+            verifyTitle.textContent = title;
+            verifySubtitle.textContent = subtitle;
             
-            resultTitle.textContent = "A iniciar a câmara...";
-            resultTitle.className = "text-xl font-bold mb-4 text-emerald-400";
+            // Limpa as classes de estado visual
+            instructionBox.className = "border p-4 rounded-xl inline-block w-full transition-colors duration-300 bg-slate-900";
+            faceGuide.className = "guide-oval"; // Reseta as classes extra do oval
 
-            try {
-                webcamStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                webcamVideo.srcObject = webcamStream;
-            } catch (err) {
-                resultTitle.textContent = "❌ Erro ao aceder à câmara.";
-                resultTitle.className = "text-xl font-bold mb-4 text-red-400";
+            if (state === "error") {
+                instructionBox.classList.add("border-red-500/50");
+                verifyTitle.classList.replace("text-white", "text-red-400");
+                faceGuide.classList.add("guide-error");
+            } else if (state === "perfect") {
+                instructionBox.classList.add("border-emerald-500", "bg-emerald-900/30");
+                verifyTitle.classList.replace("text-white", "text-emerald-400");
+                faceGuide.classList.add("guide-perfect");
+            } else {
+                instructionBox.classList.add("border-blue-500/50");
+                verifyTitle.className = "text-2xl font-bold text-white";
             }
-        });
+        }
 
         webcamVideo.addEventListener('play', () => {
-            resultTitle.textContent = "A analisar em Tempo Real (Olhe para a câmara)";
+            const displaySize = { 
+                width: webcamVideo.videoWidth || webcamVideo.clientWidth, 
+                height: webcamVideo.videoHeight || webcamVideo.clientHeight 
+            };
 
-            detectionInterval = setInterval(async () => {
-                if (webcamVideo.paused || webcamVideo.ended) return;
+            async function detectFrame() {
+                if (webcamVideo.paused || webcamVideo.ended || isSuccessfullyAuthenticated) return;
 
-                // PREVENÇÃO DO ERRO: Não chamar a IA se o vídeo ainda não obteve as resoluções da câmara
-                if (!webcamVideo.videoWidth || !webcamVideo.videoHeight) return;
-
-                const displaySize = { width: webcamVideo.videoWidth, height: webcamVideo.videoHeight };
-                
-                // Configurar o canvas apenas se as dimensões não estiverem sincronizadas
-                if (overlayCanvas.width !== displaySize.width || overlayCanvas.height !== displaySize.height) {
-                    faceapi.matchDimensions(overlayCanvas, displaySize);
-                }
-
-                const detections = await faceapi.detectAllFaces(webcamVideo, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
-                                               .withFaceLandmarks()
-                                               .withFaceDescriptors();
-                
-                const resizedDetections = faceapi.resizeResults(detections, displaySize);
-                const ctx = overlayCanvas.getContext('2d');
-                ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-
-                let matchFoundInFrame = false;
-
-                resizedDetections.forEach(detection => {
-                    const box = detection.detection.box;
-                    const match = faceMatcher.findBestMatch(detection.descriptor);
-                    const isMatch = match.label !== 'unknown';
+                if (webcamVideo.videoWidth) {
+                    // Usa TinyFace para deteção ultra rápida do retângulo do rosto
+                    const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
+                    const detections = await faceapi.detectAllFaces(webcamVideo, options)
+                                                   .withFaceLandmarks()
+                                                   .withFaceDescriptors();
                     
-                    if (isMatch) matchFoundInFrame = true;
+                    if (detections.length === 0) {
+                        updateInstructions("Nenhum rosto detetado", "Olhe diretamente para a câmara.", "error");
+                    } else if (detections.length > 1) {
+                        updateInstructions("Várias pessoas detetadas", "Por favor, fique sozinho na câmara.", "error");
+                    } else {
+                        // Apenas 1 rosto detetado - Vamos analisar a geometria (Enquadramento)
+                        const detection = detections[0];
+                        const box = detection.detection.box;
 
-                    const boxColor = isMatch ? '#10B981' : '#EF4444';
-                    const text = isMatch ? `Identificado` : `Desconhecido`;
+                        // Cálculos matemáticos de Enquadramento do gov.br
+                        const videoCenterX = webcamVideo.videoWidth / 2;
+                        const videoCenterY = webcamVideo.videoHeight / 2;
+                        const faceCenterX = box.x + (box.width / 2);
+                        const faceCenterY = box.y + (box.height / 2);
+                        
+                        // Distância do centro do vídeo
+                        const distX = Math.abs(videoCenterX - faceCenterX);
+                        const distY = Math.abs(videoCenterY - faceCenterY);
+                        
+                        // Tolerância de centralização (agora 10% para forçar alinhamento perfeito)
+                        const isCentered = distX < (webcamVideo.videoWidth * 0.10) && distY < (webcamVideo.videoHeight * 0.10);
+                        
+                        // Tamanho do rosto em proporção à câmara
+                        const faceHeightRatio = box.height / webcamVideo.videoHeight;
+                        
+                        if (!isCentered) {
+                            updateInstructions("Rosto Desalinhado", "Centralize o seu rosto dentro da marcação.", "error");
+                        } else if (faceHeightRatio < 0.50) { // Exige que chegue mais perto
+                            updateInstructions("Aproxime-se mais", "Traga o seu rosto para mais perto da câmara.", "error");
+                        } else if (faceHeightRatio > 0.80) { // Rosto muito grande
+                            updateInstructions("Afaste-se um pouco", "O seu rosto está demasiado perto.", "error");
+                        } else {
+                            // ENQUADRAMENTO PERFEITO! -> Agora sim, ativamos a biometria
+                            updateInstructions("Enquadramento Perfeito", "A validar identidade, mantenha-se imóvel...", "perfect");
+                            
+                            // Compara a geometria da cara atual com a do Passo 1
+                            const match = faceMatcher.findBestMatch(detection.descriptor);
+                            
+                            if (match.label !== 'unknown') {
+                                isSuccessfullyAuthenticated = true;
+                                
+                                // Captura a foto exata do momento da validação (COM CORTE NO ROSTO)
+                                const croppedCapture = cropFaceToDataURL(webcamVideo, box, true);
+                                document.getElementById('final-captured-img').src = croppedCapture;
 
-                    new faceapi.draw.DrawBox(box, {
-                        label: text, boxColor: boxColor, drawLabelOptions: { backgroundColor: boxColor, fontSize: 18, padding: 10 }
-                    }).draw(overlayCanvas);
-                });
-
-                if (matchFoundInFrame) {
-                    actionPanel.classList.remove('hidden');
-                } else {
-                    actionPanel.classList.add('hidden');
+                                setTimeout(triggerSuccess, 500); // 500ms de delay para dar tempo ao utilizador de ler o "Perfeito"
+                            } else {
+                                // Enquadrou, mas não é a mesma pessoa do cartão
+                                updateInstructions("Não Reconhecido", "Rosto não corresponde à foto de registo.", "error");
+                            }
+                        }
+                    }
                 }
 
-            }, 150);
+                if (!isSuccessfullyAuthenticated) {
+                    detectionTimeout = setTimeout(detectFrame, 150); // Corre frame a frame
+                }
+            }
+
+            detectFrame();
         });
 
+        // Função de Sucesso
+        function triggerSuccess() {
+            stopCamera();
+            stepVerify.classList.add('hidden');
+            successScreen.classList.remove('hidden');
+        }
+
+        // Função para parar câmara
         function stopCamera() {
             if (webcamStream) {
                 webcamStream.getTracks().forEach(track => track.stop());
                 webcamVideo.srcObject = null;
             }
-            if (detectionInterval) clearInterval(detectionInterval);
+            if (detectionTimeout) clearTimeout(detectionTimeout);
         }
 
-        btnStopWebcam.addEventListener('click', () => {
+        // Cancelar
+        btnCancel.addEventListener('click', () => {
             stopCamera();
-            webcamVideo.classList.add('hidden');
-            btnStopWebcam.classList.add('hidden');
-            resultPanel.classList.add('hidden');
-            actionPanel.classList.add('hidden');
-            overlayCanvas.getContext('2d').clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+            refUpload.value = '';
+            uploadText.textContent = "Carregar Fotografia de Referência";
+            refStatusMsg.textContent = '';
+            refImagePreview.classList.add('hidden');
+            refImagePlaceholder.classList.remove('hidden');
+            faceMatcher = null;
+
+            stepVerify.classList.add('hidden');
+            stepRegister.classList.remove('hidden');
         });
 
-        // ==========================================
-        // LÓGICA DE VERIFICAÇÃO COM FOTOGRAFIA
-        // ==========================================
-        verifyUpload.addEventListener('change', async (e) => {
-            if (!e.target.files.length || !faceMatcher) return;
-
-            stopCamera();
-
-            const file = e.target.files[0];
-            
-            resultPanel.classList.remove('hidden');
-            webcamVideo.classList.add('hidden');
-            btnStopWebcam.classList.add('hidden');
-            queryImage.classList.remove('hidden');
-            actionPanel.classList.add('hidden');
-            successMessage.classList.add('hidden');
-            mediaContainer.classList.remove('hidden');
-            
-            resultTitle.textContent = "A analisar rosto na fotografia...";
-            resultTitle.className = "text-xl font-bold mb-4 text-blue-400";
-            
-            const ctx = overlayCanvas.getContext('2d');
-            ctx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
-
-            queryImage.src = URL.createObjectURL(file);
-            
-            // PREVENÇÃO DO ERRO: Aguardar o total carregamento da imagem e tratar falhas
-            try {
-                await new Promise((resolve, reject) => {
-                    queryImage.onload = resolve;
-                    queryImage.onerror = reject;
-                });
-            } catch (err) {
-                resultTitle.textContent = "❌ Erro ao ler a fotografia.";
-                resultTitle.className = "text-xl font-bold mb-4 text-red-400";
-                return;
-            }
-
-            // PREVENÇÃO DO ERRO: Verificar se as dimensões são válidas
-            if (!queryImage.naturalWidth || !queryImage.naturalHeight) {
-                resultTitle.textContent = "❌ Erro: Fotografia inválida ou corrompida.";
-                resultTitle.className = "text-xl font-bold mb-4 text-red-400";
-                return;
-            }
-
-            const displaySize = { 
-                width: queryImage.width || queryImage.naturalWidth, 
-                height: queryImage.height || queryImage.naturalHeight 
-            };
-            faceapi.matchDimensions(overlayCanvas, displaySize);
-
-            const detections = await faceapi.detectAllFaces(queryImage, new faceapi.SsdMobilenetv1Options())
-                                           .withFaceLandmarks()
-                                           .withFaceDescriptors();
-
-            const resizedDetections = faceapi.resizeResults(detections, displaySize);
-
-            if (resizedDetections.length === 0) {
-                resultTitle.textContent = "⚠️ Nenhum rosto detetado nesta foto.";
-                resultTitle.className = "text-xl font-bold mb-4 text-yellow-400";
-                return;
-            }
-
-            let foundMatch = false;
-
-            resizedDetections.forEach(detection => {
-                const box = detection.detection.box;
-                const match = faceMatcher.findBestMatch(detection.descriptor);
-                const isMatch = match.label !== 'unknown';
-                const boxColor = isMatch ? '#10B981' : '#EF4444';
-                if(isMatch) foundMatch = true;
-
-                const text = isMatch ? `Identidade Confirmada` : `Desconhecido`;
-                new faceapi.draw.DrawBox(box, {
-                    label: text, boxColor: boxColor, drawLabelOptions: { backgroundColor: boxColor, fontSize: 16, padding: 10 }
-                }).draw(overlayCanvas);
-            });
-
-            if (foundMatch) {
-                resultTitle.textContent = "✅ Identidade Confirmada com Sucesso!";
-                resultTitle.className = "text-xl font-bold mb-4 text-emerald-400";
-                actionPanel.classList.remove('hidden'); 
+        // Alternar visualização da foto capturada
+        const btnTogglePhoto = document.getElementById('btn-toggle-photo');
+        const capturedPhotoSection = document.getElementById('captured-photo-section');
+        
+        btnTogglePhoto.addEventListener('click', () => {
+            if (capturedPhotoSection.classList.contains('hidden')) {
+                capturedPhotoSection.classList.remove('hidden');
+                btnTogglePhoto.textContent = "Ocultar foto da validação";
             } else {
-                resultTitle.textContent = "❌ Pessoa não reconhecida na fotografia.";
-                resultTitle.className = "text-xl font-bold mb-4 text-red-400";
+                capturedPhotoSection.classList.add('hidden');
+                btnTogglePhoto.textContent = "Ver foto da validação";
             }
         });
 
-        // ==========================================
-        // LÓGICA DE SUBMISSÃO FINAL
-        // ==========================================
-        btnSubmit.addEventListener('click', () => {
-            stopCamera();
-            
-            mediaContainer.classList.add('hidden');
-            btnStopWebcam.classList.add('hidden');
-            actionPanel.classList.add('hidden');
-            verificationStep.classList.add('hidden'); 
-
-            resultTitle.textContent = "";
-            successMessage.classList.remove('hidden');
-            successMessage.classList.add('fade-in');
-            
-            console.log("A enviar dados para o servidor...");
-            if (coordsText.textContent) {
-                console.log("Localização enviada:", coordsText.textContent);
-            }
-        });
-
-        window.addEventListener('load', init);
+        window.addEventListener('load', loadModels);
     </script>
 </body>
 </html>
