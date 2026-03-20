@@ -48,7 +48,7 @@
         
         <div class="text-center space-y-2 mb-10">
             <h1 class="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 tracking-tight">
-                Portal de Acesso Biométrico
+                Portal Biométryan
             </h1>
             <p class="text-slate-400 text-lg">Validação de identidade avançada com enquadramento facial.</p>
         </div>
@@ -109,7 +109,6 @@
                 <!-- Container do Vídeo Proporcional -->
                 <div class="relative flex-grow w-full h-full overflow-hidden bg-black">
                     <video id="webcam-video" autoplay muted playsinline class="absolute inset-0 w-full h-full object-cover"></video>
-                    <!-- O Canvas agora fica escondido para os olhos do utilizador (UI mais limpa), é usado só para lógica -->
                     <canvas id="overlay-canvas" class="hidden"></canvas>
                     
                     <!-- Overlay Oval de Enquadramento -->
@@ -180,6 +179,11 @@
         let detectionTimeout = null;
         let isSuccessfullyAuthenticated = false;
 
+        // Variaveis de Estabilização e Movimento
+        let lastFaceCenter = { x: 0, y: 0 };
+        let stableFramesCount = 0;
+        const REQUIRED_STABLE_FRAMES = 6; // Qtd de frames consecutivos que a pessoa deve ficar parada (aprox. 1 segundo)
+
         // Elementos UI
         const statusPanel = document.getElementById('status-panel');
         const mainApp = document.getElementById('main-app');
@@ -206,23 +210,48 @@
 
         // Função utilitária para cortar a imagem exatamente no rosto (Estilo Passaporte)
         function cropFaceToDataURL(source, box, isVideo = false) {
-            const padX = box.width * 0.4;
-            const padYTop = box.height * 0.6;
-            const padYBot = box.height * 0.4;
+            const sourceW = isVideo ? source.videoWidth : (source.naturalWidth || source.width);
+            const sourceH = isVideo ? source.videoHeight : (source.naturalHeight || source.height);
 
-            const sourceW = isVideo ? source.videoWidth : source.width;
-            const sourceH = isVideo ? source.videoHeight : source.height;
+            // Encontra o centro exato do rosto
+            const centerX = box.x + (box.width / 2);
+            const centerY = box.y + (box.height / 2);
 
-            const x = Math.max(0, box.x - padX);
-            const y = Math.max(0, box.y - padYTop);
-            const w = Math.min(sourceW - x, box.width + padX * 2);
-            const h = Math.min(sourceH - y, box.height + padYTop + padYBot);
+            // Cria um recorte perfeitamente quadrado para evitar distorções no círculo final
+            const faceSize = Math.max(box.width, box.height);
+            const cropSize = faceSize * 1.8; // 80% de margem à volta do rosto
+
+            let startX = centerX - (cropSize / 2);
+            let startY = centerY - (cropSize / 2) - (faceSize * 0.1); // Sobe um pouco para não cortar o topo da cabeça
 
             const canvas = document.createElement('canvas');
-            canvas.width = w;
-            canvas.height = h;
-            canvas.getContext('2d').drawImage(source, x, y, w, h, 0, 0, w, h);
-            return canvas.toDataURL('image/jpeg');
+            canvas.width = cropSize;
+            canvas.height = cropSize;
+            const ctx = canvas.getContext('2d');
+
+            // Preenche o fundo com uma cor escura caso o corte saia dos limites do vídeo/foto
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, cropSize, cropSize);
+
+            // Espelha a captura da webcam para ficar igual ao que o utilizador viu no ecrã
+            if (isVideo) {
+                ctx.translate(cropSize, 0);
+                ctx.scale(-1, 1);
+            }
+
+            // Garante que não tentamos desenhar coordenadas fora dos limites da imagem original
+            const sX = Math.max(0, startX);
+            const sY = Math.max(0, startY);
+            const sW = Math.min(sourceW - sX, cropSize - (sX - startX));
+            const sH = Math.min(sourceH - sY, cropSize - (sY - startY));
+
+            const dX = sX - startX;
+            const dY = sY - startY;
+
+            ctx.drawImage(source, sX, sY, sW, sH, dX, dY, sW, sH);
+            
+            // Retorna em alta qualidade (95%)
+            return canvas.toDataURL('image/jpeg', 0.95);
         }
 
         // 1. CARREGAR MODELOS
@@ -278,7 +307,7 @@
                                            .withFaceDescriptor();
 
             if (detection) {
-                // NOVO: Validação de Qualidade da Foto de Registo
+                // Validação de Qualidade da Foto de Registo
                 const faceAreaRatio = (detection.detection.box.width * detection.detection.box.height) / (img.width * img.height);
                 if (faceAreaRatio < 0.08) {
                     uploadText.textContent = "❌ Foto Inválida";
@@ -325,6 +354,7 @@
         async function startVerificationFlow() {
             if (!faceMatcher) return;
             isSuccessfullyAuthenticated = false;
+            stableFramesCount = 0; // Resetar contador de movimento
 
             stepRegister.classList.add('hidden');
             stepVerify.classList.remove('hidden');
@@ -382,8 +412,10 @@
                     
                     if (detections.length === 0) {
                         updateInstructions("Nenhum rosto detetado", "Olhe diretamente para a câmara.", "error");
+                        stableFramesCount = 0; // Reset
                     } else if (detections.length > 1) {
                         updateInstructions("Várias pessoas detetadas", "Por favor, fique sozinho na câmara.", "error");
+                        stableFramesCount = 0; // Reset
                     } else {
                         // Apenas 1 rosto detetado - Vamos analisar a geometria (Enquadramento)
                         const detection = detections[0];
@@ -407,29 +439,59 @@
                         
                         if (!isCentered) {
                             updateInstructions("Rosto Desalinhado", "Centralize o seu rosto dentro da marcação.", "error");
-                        } else if (faceHeightRatio < 0.25) { // Era 0.50, reduzido para facilitar
+                            stableFramesCount = 0;
+                        } else if (faceHeightRatio < 0.25) { 
                             updateInstructions("Aproxime-se mais", "Traga o seu rosto para mais perto da câmara.", "error");
-                        } else if (faceHeightRatio > 0.65) { // Era 0.80, reduzido
+                            stableFramesCount = 0;
+                        } else if (faceHeightRatio > 0.65) { 
                             updateInstructions("Afaste-se um pouco", "O seu rosto está demasiado perto.", "error");
+                            stableFramesCount = 0;
                         } else {
-                            // ENQUADRAMENTO PERFEITO! -> Agora sim, ativamos a biometria
-                            updateInstructions("Enquadramento Perfeito", "A validar identidade, mantenha-se imóvel...", "perfect");
+                            // ENQUADRAMENTO VÁLIDO! -> Agora vamos ver se a pessoa parou de se mexer
                             
-                            // Compara a geometria da cara atual com a do Passo 1
-                            const match = faceMatcher.findBestMatch(detection.descriptor);
+                            // Calcula quanto o rosto se mexeu desde a última frame
+                            const moveDistX = Math.abs(faceCenterX - lastFaceCenter.x);
+                            const moveDistY = Math.abs(faceCenterY - lastFaceCenter.y);
                             
-                            if (match.label !== 'unknown') {
-                                isSuccessfullyAuthenticated = true;
-                                
-                                // Captura a foto exata do momento da validação (COM CORTE NO ROSTO)
-                                const croppedCapture = cropFaceToDataURL(webcamVideo, box, true);
-                                document.getElementById('final-captured-img').src = croppedCapture;
+                            // Define tolerância de movimento (aprox 2% da largura do video)
+                            const movementTolerance = webcamVideo.videoWidth * 0.02;
 
-                                setTimeout(triggerSuccess, 500); // 500ms de delay para dar tempo ao utilizador de ler o "Perfeito"
+                            if (moveDistX < movementTolerance && moveDistY < movementTolerance) {
+                                // Pessoa está imobilizada
+                                stableFramesCount++;
+                                
+                                if (stableFramesCount < REQUIRED_STABLE_FRAMES) {
+                                    // Está parado, mas ainda a contar o tempo
+                                    updateInstructions("Mantenha-se imóvel", "A focar a câmara...", "perfect");
+                                } else {
+                                    // Parou tempo suficiente! Captura garantida sem vultos.
+                                    updateInstructions("Enquadramento Perfeito", "A validar identidade...", "perfect");
+                                    
+                                    // Compara a geometria da cara atual com a do Passo 1
+                                    const match = faceMatcher.findBestMatch(detection.descriptor);
+                                    
+                                    if (match.label !== 'unknown') {
+                                        isSuccessfullyAuthenticated = true;
+                                        
+                                        // Captura a foto exata e FOCADA do momento da validação
+                                        const croppedCapture = cropFaceToDataURL(webcamVideo, box, true);
+                                        document.getElementById('final-captured-img').src = croppedCapture;
+
+                                        setTimeout(triggerSuccess, 500); // 500ms de delay
+                                    } else {
+                                        // Enquadrou e parou, mas não é a mesma pessoa do cartão
+                                        updateInstructions("Não Reconhecido", "Rosto não corresponde à foto de registo.", "error");
+                                        stableFramesCount = 0; // Reset para voltar a tentar
+                                    }
+                                }
                             } else {
-                                // Enquadrou, mas não é a mesma pessoa do cartão
-                                updateInstructions("Não Reconhecido", "Rosto não corresponde à foto de registo.", "error");
+                                // A pessoa está no oval mas ainda está a mexer a cabeça
+                                stableFramesCount = 0;
+                                updateInstructions("Quase lá...", "Pare de se mexer para focar a foto.", "normal");
                             }
+
+                            // Guarda a posição atual para comparar com a próxima frame
+                            lastFaceCenter = { x: faceCenterX, y: faceCenterY };
                         }
                     }
                 }
@@ -456,6 +518,7 @@
                 webcamVideo.srcObject = null;
             }
             if (detectionTimeout) clearTimeout(detectionTimeout);
+            stableFramesCount = 0; // Reset da estabilização
         }
 
         // Cancelar
