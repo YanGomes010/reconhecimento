@@ -12,34 +12,19 @@
         .fade-in { animation: fadeIn 0.5s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* O overlay ovalado estilo gov.br */
         .guide-overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
-            overflow: hidden;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; display: flex; align-items: center; justify-content: center;
+            z-index: 10; overflow: hidden;
         }
         .guide-oval {
-            width: 70vw;
-            height: 90vw;
-            max-width: 320px;
-            max-height: 450px;
-            border-radius: 50%;
-            border: 4px dashed rgba(255, 255, 255, 0.5);
-            transition: all 0.3s ease;
-            box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.85); /* Efeito de escurecer o fundo */
+            width: 70vw; height: 90vw; max-width: 320px; max-height: 450px;
+            border-radius: 50%; border: 4px dashed rgba(255, 255, 255, 0.5);
+            transition: all 0.3s ease; box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.85);
         }
-        /* Classes dinâmicas para o guia */
         .guide-perfect { border-color: #10B981; border-style: solid; box-shadow: 0 0 20px #10B981, 0 0 0 9999px rgba(15, 23, 42, 0.85); }
         .guide-error { border-color: #EF4444; border-style: solid; }
-        
-        /* Espelhar a câmara: Torna os movimentos intuitivos como um espelho de casa */
         #webcam-video { transform: scaleX(-1); }
-        
     </style>
 </head>
 <body class="bg-slate-950 text-slate-100 font-sans min-h-screen p-4 md:p-8 flex justify-center">
@@ -48,20 +33,29 @@
         
         <div class="text-center space-y-2 mb-10">
             <h1 class="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 tracking-tight">
-                Portal Biométryan
+                Portal de Acesso Biométrico
             </h1>
-            <p class="text-slate-400 text-lg">Validação de identidade avançada com enquadramento facial.</p>
+            <p class="text-slate-400 text-lg">Validação de identidade avançada interligada ao sistema.</p>
+        </div>
+
+        <!-- ECRÃ DE BLOQUEIO (SEM TOKEN) -->
+        <div id="no-token-screen" class="hidden bg-red-950/50 border-4 border-red-500 rounded-3xl p-10 text-center shadow-2xl fade-in">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-red-500 mx-auto mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <h2 class="text-3xl font-extrabold text-white mb-4">Acesso Negado</h2>
+            <p class="text-lg text-slate-300 mb-8">Esta página só pode ser acedida através de um link seguro enviado pelo nosso assistente virtual no WhatsApp.</p>
+            <p class="text-sm text-slate-500">Por favor, regresse ao WhatsApp e clique no link fornecido na conversa.</p>
         </div>
 
         <!-- Painel de Loading -->
-        <div id="status-panel" class="bg-slate-800 border border-slate-700 rounded-3xl p-8 text-center shadow-2xl transition-all duration-300">
+        <div id="status-panel" class="hidden bg-slate-800 border border-slate-700 rounded-3xl p-8 text-center shadow-2xl transition-all duration-300">
             <div id="loading-spinner" class="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-5"></div>
             <h2 id="status-title" class="text-2xl font-bold text-white mb-3">A carregar IA...</h2>
             <p id="status-message" class="text-slate-400">Estamos a preparar os modelos de reconhecimento facial.</p>
         </div>
 
         <div id="main-app" class="hidden space-y-10 fade-in">
-            
             <!-- PASSO 1: REGISTO -->
             <div id="step-register" class="bg-slate-800 border border-slate-700 rounded-3xl p-8 shadow-xl">
                 <div class="flex items-center gap-4 mb-6 pb-4 border-b border-slate-700">
@@ -90,7 +84,6 @@
                                 <div id="upload-spinner" class="hidden w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                                 <span id="upload-text" class="text-blue-400 font-semibold group-hover:text-blue-300">Carregar Fotografia de Referência</span>
                             </div>
-                            <!-- Blocker para impedir múltiplos cliques durante o loading -->
                             <div id="upload-blocker" class="hidden absolute inset-0 rounded-2xl cursor-not-allowed z-10 bg-slate-900/50"></div>
                         </label>
                         <p id="ref-status-msg" class="text-xs mt-3 h-4 text-center"></p>
@@ -98,74 +91,52 @@
                 </div>
             </div>
 
-            <!-- PASSO 2: VERIFICAÇÃO ATIVA (TELA CHEIA) -->
+            <!-- PASSO 2: VERIFICAÇÃO ATIVA -->
             <div id="step-verify" class="hidden fixed inset-0 z-50 bg-black flex flex-col fade-in">
-                <!-- Barra de Instruções Flutuante -->
                 <div id="instruction-bar" class="absolute top-0 left-0 w-full p-6 bg-gradient-to-b from-black/90 to-transparent z-20 transition-colors duration-300 flex flex-col items-center text-center pt-10">
                     <h3 class="text-2xl font-bold text-white drop-shadow-lg" id="verify-title">A aguardar câmara...</h3>
                     <p class="text-slate-300 text-sm mt-1 drop-shadow-md font-medium" id="verify-subtitle">Siga as instruções para enquadrar o seu rosto.</p>
                 </div>
 
-                <!-- Container do Vídeo Proporcional -->
                 <div class="relative flex-grow w-full h-full overflow-hidden bg-black">
                     <video id="webcam-video" autoplay muted playsinline class="absolute inset-0 w-full h-full object-cover"></video>
                     <canvas id="overlay-canvas" class="hidden"></canvas>
-                    
-                    <!-- Overlay Oval de Enquadramento -->
-                    <div class="guide-overlay">
-                        <div id="face-guide" class="guide-oval"></div>
-                    </div>
+                    <div class="guide-overlay"><div id="face-guide" class="guide-oval"></div></div>
                 </div>
                 
-                <!-- Botão Cancelar Flutuante na Base -->
-                <div class="absolute bottom-10 w-full flex justify-center z-20">
-                    <button id="btn-cancel" class="px-6 py-3 bg-red-600/80 hover:bg-red-500 text-white font-semibold rounded-full backdrop-blur-md transition-colors shadow-lg border border-red-400/30 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                <div class="absolute bottom-10 w-full flex justify-center z-20 gap-4">
+                    <!-- Botão de Desistir (Aborta e notifica o n8n) -->
+                    <button id="btn-abort" class="px-6 py-3 bg-red-600/80 hover:bg-red-500 text-white font-semibold rounded-full backdrop-blur-md transition-colors shadow-lg border border-red-400/30 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                         Cancelar Validação
                     </button>
                 </div>
             </div>
             
-            <!-- RESULTADO FINAL: SUCESSO -->
+            <!-- RESULTADO FINAL: SUCESSO OU FALHA -->
             <div id="success-screen" class="hidden bg-slate-900 border-4 border-emerald-500 rounded-3xl p-10 text-center shadow-2xl fade-in">
-                <div class="w-24 h-24 rounded-full bg-emerald-600 flex items-center justify-center mx-auto mb-6 shadow-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div id="final-icon-container" class="w-24 h-24 rounded-full bg-emerald-600 flex items-center justify-center mx-auto mb-6 shadow-lg">
+                    <svg id="final-icon" xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
                     </svg>
                 </div>
-                <h2 class="text-4xl font-extrabold text-white mb-4 track-tight">Identidade Validada!</h2>
-                <p class="text-xl text-emerald-300 font-medium mb-8">O enquadramento facial e a identificação biométrica foram concluídos com sucesso.</p>
+                <h2 id="final-title" class="text-4xl font-extrabold text-white mb-4 track-tight">Identidade Validada!</h2>
+                <p id="final-subtitle" class="text-xl text-emerald-300 font-medium mb-4">O enquadramento facial e a identificação biométrica foram concluídos com sucesso.</p>
+                <p id="final-instruction" class="text-sm text-slate-400 mb-8">O sistema já sincronizou o resultado com o seu atendimento.</p>
                 
-                <p class="text-slate-500 text-sm">Este é o fim da simulação de segurança avançada.</p>
-                
-                <!-- Secção da Foto Capturada (Opcional) -->
-                <div class="mt-6">
-                    <button id="btn-toggle-photo" class="text-emerald-400 hover:text-emerald-300 underline text-sm transition-colors">
-                        Ver foto da validação
-                    </button>
-                    
-                    <div id="captured-photo-section" class="hidden mt-6 bg-slate-800 p-6 rounded-2xl border border-slate-700 fade-in">
-                        <p class="text-sm text-slate-400 mb-4 font-medium">Comparação Biométrica (Registo vs. Tempo Real)</p>
-                        <div class="flex flex-row justify-center items-center gap-6">
-                            <div class="flex flex-col items-center">
-                                <img id="final-ref-img" src="" class="w-24 h-24 rounded-full object-cover border-4 border-slate-600 shadow-md">
-                                <span class="text-xs text-slate-400 mt-2 font-semibold">Registo</span>
-                            </div>
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                            </svg>
-                            <div class="flex flex-col items-center">
-                                <img id="final-captured-img" src="" class="w-24 h-24 rounded-full object-cover border-4 border-emerald-500 shadow-lg">
-                                <span class="text-xs text-emerald-400 mt-2 font-bold">Validação</span>
-                            </div>
-                        </div>
-                    </div>
+                <div id="webhook-loading" class="mb-6 flex flex-col items-center">
+                    <div class="w-8 h-8 border-4 border-slate-500 border-t-white rounded-full animate-spin mb-2"></div>
+                    <span class="text-sm text-slate-400">A enviar dados de forma segura...</span>
                 </div>
-                
-                <button onclick="location.reload()" class="mt-8 px-8 py-3 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded-xl transition-colors shadow-lg">
-                    Iniciar Novo Teste
+
+                <!-- Botão de Regresso ao WhatsApp (Abre apenas o app, sem forçar mensagem) -->
+                <button id="btn-return-whatsapp" class="hidden mx-auto px-8 py-4 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold rounded-xl transition-colors shadow-lg flex items-center gap-3 text-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M11.944 0A12 12 0 000 12a12 12 0 001.602 6.001L0 24l6.185-1.551A11.944 11.944 0 0012 24a12 12 0 0012-12A12 12 0 0012 0zm0 22.06c-1.87 0-3.692-.486-5.32-1.411l-.382-.218-3.951.99.99-3.951-.218-.382A10.02 10.02 0 011.944 12c0-5.545 4.51-10.055 10.055-10.055S22.056 6.455 22.056 12 17.545 22.056 12 22.056zm5.512-7.534c-.302-.15-1.782-.876-2.06-.976-.277-.1-.478-.15-.68.15s-.78 1.054-.956 1.254c-.175.2-.35.226-.653.076-2.126-1.042-3.41-2.288-4.32-3.86-.176-.301.077-.442.368-.975.05-.1.026-.176-.025-.276-.102-.2-.68-1.63-.93-2.23-.243-.586-.486-.5-.68-.51h-.578c-.2 0-.527.075-.804.376-.276.3-1.054 1.028-1.054 2.508 0 1.48 1.08 2.91 1.23 3.11.15.2 2.124 3.328 5.144 4.544.717.29 1.277.464 1.714.595.72.228 1.376.196 1.892.119.58-.087 1.782-.728 2.033-1.432.25-.704.25-1.306.175-1.432-.075-.126-.276-.2-.578-.35z"/>
+                    </svg>
+                    Regressar ao Atendimento
                 </button>
             </div>
 
@@ -173,22 +144,39 @@
     </div>
 
     <script>
+        // ==========================================
+        // CONFIGURAÇÕES DO N8N E WHATSAPP
+        // ==========================================
+        const N8N_WEBHOOK_URL = "https://n8n-ouvidoria.tjrr.jus.br/webhook/biometria-retorno"; 
+        const NUMERO_BOT_WHATSAPP = "558005552233"; // Opcional: Apenas para facilitar o regresso ao App
+        
+        // ==========================================
+        // VERIFICAÇÃO DE SEGURANÇA (TOKEN)
+        // ==========================================
+        const urlParams = new URLSearchParams(window.location.search);
+        const userToken = urlParams.get('token');
+        const phoneNumber = urlParams.get('telefone'); 
+
+        if (!userToken) {
+            // Sem token = Mostra bloqueio e não carrega IA
+            document.getElementById('no-token-screen').classList.remove('hidden');
+        } else {
+            // Com token = Mostra loading e inicia processo
+            document.getElementById('status-panel').classList.remove('hidden');
+            window.addEventListener('load', loadModels);
+        }
+
         const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
         let faceMatcher = null;
         let webcamStream = null;
         let detectionTimeout = null;
         let isSuccessfullyAuthenticated = false;
 
-        // Variaveis de Estabilização e Movimento
         let lastFaceCenter = { x: 0, y: 0 };
         let stableFramesCount = 0;
-        const REQUIRED_STABLE_FRAMES = 6; // Qtd de frames consecutivos que a pessoa deve ficar parada (aprox. 1 segundo)
+        const REQUIRED_STABLE_FRAMES = 6; 
 
-        // Elementos UI
-        const statusPanel = document.getElementById('status-panel');
         const mainApp = document.getElementById('main-app');
-        
-        // Elementos Registo
         const stepRegister = document.getElementById('step-register');
         const refUpload = document.getElementById('ref-upload');
         const refImagePreview = document.getElementById('ref-image-preview');
@@ -196,86 +184,64 @@
         const uploadText = document.getElementById('upload-text');
         const refStatusMsg = document.getElementById('ref-status-msg');
 
-        // Elementos Verificação
         const stepVerify = document.getElementById('step-verify');
         const verifyTitle = document.getElementById('verify-title');
         const verifySubtitle = document.getElementById('verify-subtitle');
         const instructionBar = document.getElementById('instruction-bar');
         const webcamVideo = document.getElementById('webcam-video');
         const faceGuide = document.getElementById('face-guide');
-        const btnCancel = document.getElementById('btn-cancel');
+        const btnAbort = document.getElementById('btn-abort');
         
-        // Elementos Sucesso
         const successScreen = document.getElementById('success-screen');
 
-        // Função utilitária para cortar a imagem exatamente no rosto (Estilo Passaporte)
         function cropFaceToDataURL(source, box, isVideo = false) {
             const sourceW = isVideo ? source.videoWidth : (source.naturalWidth || source.width);
             const sourceH = isVideo ? source.videoHeight : (source.naturalHeight || source.height);
-
-            // Encontra o centro exato do rosto
             const centerX = box.x + (box.width / 2);
             const centerY = box.y + (box.height / 2);
-
-            // Cria um recorte perfeitamente quadrado para evitar distorções no círculo final
             const faceSize = Math.max(box.width, box.height);
-            const cropSize = faceSize * 1.8; // 80% de margem à volta do rosto
+            const cropSize = faceSize * 1.8; 
 
             let startX = centerX - (cropSize / 2);
-            let startY = centerY - (cropSize / 2) - (faceSize * 0.1); // Sobe um pouco para não cortar o topo da cabeça
+            let startY = centerY - (cropSize / 2) - (faceSize * 0.1); 
 
             const canvas = document.createElement('canvas');
             canvas.width = cropSize;
             canvas.height = cropSize;
             const ctx = canvas.getContext('2d');
-
-            // Preenche o fundo com uma cor escura caso o corte saia dos limites do vídeo/foto
             ctx.fillStyle = '#0f172a';
             ctx.fillRect(0, 0, cropSize, cropSize);
 
-            // Espelha a captura da webcam para ficar igual ao que o utilizador viu no ecrã
             if (isVideo) {
                 ctx.translate(cropSize, 0);
                 ctx.scale(-1, 1);
             }
 
-            // Garante que não tentamos desenhar coordenadas fora dos limites da imagem original
             const sX = Math.max(0, startX);
             const sY = Math.max(0, startY);
             const sW = Math.min(sourceW - sX, cropSize - (sX - startX));
             const sH = Math.min(sourceH - sY, cropSize - (sY - startY));
-
             const dX = sX - startX;
             const dY = sY - startY;
 
             ctx.drawImage(source, sX, sY, sW, sH, dX, dY, sW, sH);
-            
-            // Retorna em alta qualidade (95%)
             return canvas.toDataURL('image/jpeg', 0.95);
         }
 
-        // 1. CARREGAR MODELOS
         async function loadModels() {
             try {
-                // SSD para registo forte, TinyFace para webcam rapida em tempo real
                 await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
                 await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
                 await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
                 await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-                console.log("Modelos de IA carregados.");
-                statusPanel.classList.add('hidden');
+                document.getElementById('status-panel').classList.add('hidden');
                 mainApp.classList.remove('hidden');
             } catch (err) {
-                console.error(err);
                 document.getElementById('status-title').textContent = "Erro na IA";
-                document.getElementById('status-message').textContent = "Não foi possível carregar os modelos. Verifique a internet.";
+                document.getElementById('status-message').textContent = "Não foi possível carregar os modelos.";
             }
         }
 
-        // ==========================================
-        // LÓGICA DE REGISTO (PASSO 1)
-        // ==========================================
-        
         function resetUploadState() {
             document.getElementById('upload-blocker').classList.add('hidden');
             document.getElementById('upload-icon').classList.remove('hidden');
@@ -287,15 +253,11 @@
             if (!e.target.files.length) return;
             const file = e.target.files[0];
             
-            // Ativa o estado de Loading e bloqueia a interface
             refUpload.disabled = true;
             document.getElementById('upload-blocker').classList.remove('hidden');
             document.getElementById('upload-icon').classList.add('hidden');
             document.getElementById('upload-spinner').classList.remove('hidden');
-
             uploadText.textContent = "A processar foto...";
-            refStatusMsg.textContent = "A aguardar extração biométrica...";
-            refStatusMsg.className = "text-xs mt-3 h-4 text-center text-slate-400";
 
             const img = await faceapi.bufferToImage(file);
             refImagePreview.src = img.src;
@@ -307,11 +269,10 @@
                                            .withFaceDescriptor();
 
             if (detection) {
-                // Validação de Qualidade da Foto de Registo
                 const faceAreaRatio = (detection.detection.box.width * detection.detection.box.height) / (img.width * img.height);
                 if (faceAreaRatio < 0.08) {
                     uploadText.textContent = "❌ Foto Inválida";
-                    refStatusMsg.textContent = "O rosto está muito longe. Envie uma foto tipo passe focada no rosto.";
+                    refStatusMsg.textContent = "O rosto está muito longe. Envie uma foto tipo passe.";
                     refStatusMsg.className = "text-xs mt-3 h-4 text-center text-red-400";
                     refImagePreview.classList.add('hidden');
                     refImagePlaceholder.classList.remove('hidden');
@@ -321,64 +282,48 @@
                 }
 
                 faceMatcher = new faceapi.FaceMatcher([
-                    new faceapi.LabeledFaceDescriptors('Utilizador Registado', [detection.descriptor])
-                ], 0.45); // Rigor aumentado para 45% de margem (Alta Segurança)
-
-                // Extrai apenas o rosto para a interface (Corte Perfeito)
-                const croppedFaceDataUrl = cropFaceToDataURL(img, detection.detection.box, false);
-                refImagePreview.src = croppedFaceDataUrl;
-                document.getElementById('final-ref-img').src = croppedFaceDataUrl;
+                    new faceapi.LabeledFaceDescriptors('Utilizador', [detection.descriptor])
+                ], 0.45); 
 
                 uploadText.textContent = "✓ Foto Registada!";
-                refStatusMsg.textContent = "Rosto identificado. A preparar sistema avançado...";
+                refStatusMsg.textContent = "A preparar câmara...";
                 refStatusMsg.className = "text-xs mt-3 h-4 text-center text-emerald-400";
                 
                 setTimeout(() => {
                     startVerificationFlow();
-                    resetUploadState(); // Limpa o estado para a próxima vez
+                    resetUploadState(); 
                 }, 1500);
             } else {
                 uploadText.textContent = "❌ Erro no Registo";
-                refStatusMsg.textContent = "Não encontrámos um rosto claro na foto. Tente outra.";
+                refStatusMsg.textContent = "Não encontrámos um rosto claro na foto.";
                 refStatusMsg.className = "text-xs mt-3 h-4 text-center text-red-400";
                 refImagePreview.classList.add('hidden');
                 refImagePlaceholder.classList.remove('hidden');
                 refUpload.value = ''; 
-                resetUploadState(); // Liberta o botão para tentar novamente
+                resetUploadState(); 
             }
         });
 
-        // ==========================================
-        // LÓGICA DE ENQUADRAMENTO ATIVO (PASSO 2)
-        // ==========================================
         async function startVerificationFlow() {
             if (!faceMatcher) return;
             isSuccessfullyAuthenticated = false;
-            stableFramesCount = 0; // Resetar contador de movimento
-
+            stableFramesCount = 0; 
             stepRegister.classList.add('hidden');
             stepVerify.classList.remove('hidden');
 
             try {
-                // Tenta carregar câmara frontal preferencialmente
-                webcamStream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "user" }, 
-                    audio: false 
-                });
+                webcamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
                 webcamVideo.srcObject = webcamStream;
                 updateInstructions("Por favor, posicione-se", "Enquadre o seu rosto na marcação oval.", "normal");
             } catch (err) {
-                console.error(err);
                 updateInstructions("❌ Erro de Câmara", "Não foi possível aceder à sua webcam.", "error");
             }
         }
 
-        // Atualiza a interface gráfica de instruções
         function updateInstructions(title, subtitle, state) {
             verifyTitle.textContent = title;
             verifySubtitle.textContent = subtitle;
-            
-            faceGuide.className = "guide-oval"; // Reseta as classes extra do oval
+            faceGuide.className = "guide-oval"; 
 
             if (state === "error") {
                 instructionBar.className = "absolute top-0 left-0 w-full p-6 bg-gradient-to-b from-red-900/90 to-transparent z-20 transition-colors duration-300 flex flex-col items-center text-center pt-10";
@@ -395,16 +340,9 @@
         }
 
         webcamVideo.addEventListener('play', () => {
-            const displaySize = { 
-                width: webcamVideo.videoWidth || webcamVideo.clientWidth, 
-                height: webcamVideo.videoHeight || webcamVideo.clientHeight 
-            };
-
             async function detectFrame() {
                 if (webcamVideo.paused || webcamVideo.ended || isSuccessfullyAuthenticated) return;
-
                 if (webcamVideo.videoWidth) {
-                    // Usa TinyFace para deteção ultra rápida do retângulo do rosto
                     const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
                     const detections = await faceapi.detectAllFaces(webcamVideo, options)
                                                    .withFaceLandmarks()
@@ -412,145 +350,129 @@
                     
                     if (detections.length === 0) {
                         updateInstructions("Nenhum rosto detetado", "Olhe diretamente para a câmara.", "error");
-                        stableFramesCount = 0; // Reset
+                        stableFramesCount = 0;
                     } else if (detections.length > 1) {
                         updateInstructions("Várias pessoas detetadas", "Por favor, fique sozinho na câmara.", "error");
-                        stableFramesCount = 0; // Reset
+                        stableFramesCount = 0;
                     } else {
-                        // Apenas 1 rosto detetado - Vamos analisar a geometria (Enquadramento)
-                        const detection = detections[0];
-                        const box = detection.detection.box;
-
-                        // Cálculos matemáticos de Enquadramento do gov.br
-                        const videoCenterX = webcamVideo.videoWidth / 2;
-                        const videoCenterY = webcamVideo.videoHeight / 2;
+                        const box = detections[0].detection.box;
                         const faceCenterX = box.x + (box.width / 2);
                         const faceCenterY = box.y + (box.height / 2);
+                        const distX = Math.abs((webcamVideo.videoWidth / 2) - faceCenterX);
+                        const distY = Math.abs((webcamVideo.videoHeight / 2) - faceCenterY);
                         
-                        // Distância do centro do vídeo
-                        const distX = Math.abs(videoCenterX - faceCenterX);
-                        const distY = Math.abs(videoCenterY - faceCenterY);
-                        
-                        // Tolerância de centralização (aumentada para 20% para compensar o zoom visual)
                         const isCentered = distX < (webcamVideo.videoWidth * 0.20) && distY < (webcamVideo.videoHeight * 0.20);
-                        
-                        // Tamanho do rosto em proporção à câmara (Ajustado para o que é visível no ecrã)
                         const faceHeightRatio = box.height / webcamVideo.videoHeight;
                         
                         if (!isCentered) {
                             updateInstructions("Rosto Desalinhado", "Centralize o seu rosto dentro da marcação.", "error");
                             stableFramesCount = 0;
                         } else if (faceHeightRatio < 0.25) { 
-                            updateInstructions("Aproxime-se mais", "Traga o seu rosto para mais perto da câmara.", "error");
+                            updateInstructions("Aproxime-se mais", "Traga o seu rosto para mais perto.", "error");
                             stableFramesCount = 0;
                         } else if (faceHeightRatio > 0.65) { 
                             updateInstructions("Afaste-se um pouco", "O seu rosto está demasiado perto.", "error");
                             stableFramesCount = 0;
                         } else {
-                            // ENQUADRAMENTO VÁLIDO! -> Agora vamos ver se a pessoa parou de se mexer
-                            
-                            // Calcula quanto o rosto se mexeu desde a última frame
                             const moveDistX = Math.abs(faceCenterX - lastFaceCenter.x);
                             const moveDistY = Math.abs(faceCenterY - lastFaceCenter.y);
-                            
-                            // Define tolerância de movimento (aprox 2% da largura do video)
                             const movementTolerance = webcamVideo.videoWidth * 0.02;
 
                             if (moveDistX < movementTolerance && moveDistY < movementTolerance) {
-                                // Pessoa está imobilizada
                                 stableFramesCount++;
-                                
                                 if (stableFramesCount < REQUIRED_STABLE_FRAMES) {
-                                    // Está parado, mas ainda a contar o tempo
                                     updateInstructions("Mantenha-se imóvel", "A focar a câmara...", "perfect");
                                 } else {
-                                    // Parou tempo suficiente! Captura garantida sem vultos.
                                     updateInstructions("Enquadramento Perfeito", "A validar identidade...", "perfect");
-                                    
-                                    // Compara a geometria da cara atual com a do Passo 1
-                                    const match = faceMatcher.findBestMatch(detection.descriptor);
+                                    const match = faceMatcher.findBestMatch(detections[0].descriptor);
                                     
                                     if (match.label !== 'unknown') {
                                         isSuccessfullyAuthenticated = true;
-                                        
-                                        // Captura a foto exata e FOCADA do momento da validação
-                                        const croppedCapture = cropFaceToDataURL(webcamVideo, box, true);
-                                        document.getElementById('final-captured-img').src = croppedCapture;
-
-                                        setTimeout(triggerSuccess, 500); // 500ms de delay
+                                        setTimeout(() => finishProcess('success'), 500);
                                     } else {
-                                        // Enquadrou e parou, mas não é a mesma pessoa do cartão
                                         updateInstructions("Não Reconhecido", "Rosto não corresponde à foto de registo.", "error");
-                                        stableFramesCount = 0; // Reset para voltar a tentar
+                                        stableFramesCount = 0; 
                                     }
                                 }
                             } else {
-                                // A pessoa está no oval mas ainda está a mexer a cabeça
                                 stableFramesCount = 0;
                                 updateInstructions("Quase lá...", "Pare de se mexer para focar a foto.", "normal");
                             }
-
-                            // Guarda a posição atual para comparar com a próxima frame
                             lastFaceCenter = { x: faceCenterX, y: faceCenterY };
                         }
                     }
                 }
-
-                if (!isSuccessfullyAuthenticated) {
-                    detectionTimeout = setTimeout(detectFrame, 150); // Corre frame a frame
-                }
+                if (!isSuccessfullyAuthenticated) detectionTimeout = setTimeout(detectFrame, 150); 
             }
-
             detectFrame();
         });
 
-        // Função de Sucesso
-        function triggerSuccess() {
+        // ==========================================
+        // FINALIZAÇÃO E ENVIO PARA O N8N
+        // ==========================================
+        async function finishProcess(status) {
             stopCamera();
             stepVerify.classList.add('hidden');
             successScreen.classList.remove('hidden');
+
+            const isSuccess = status === 'success';
+            
+            // Muda UI dependendo se foi sucesso ou se desistiu
+            if (!isSuccess) {
+                successScreen.classList.replace('border-emerald-500', 'border-red-500');
+                document.getElementById('final-icon-container').classList.replace('bg-emerald-600', 'bg-red-600');
+                document.getElementById('final-icon').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />';
+                document.getElementById('final-title').textContent = "Validação Cancelada";
+                document.getElementById('final-subtitle').textContent = "O processo foi interrompido.";
+                document.getElementById('final-subtitle').classList.replace('text-emerald-300', 'text-red-300');
+            }
+
+            // Notifica o n8n sobre o resultado e aguarda a sincronização
+            try {
+                await fetch(N8N_WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        token: userToken, 
+                        telefone: phoneNumber,
+                        resultado: status,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+            } catch (e) {
+                console.error("Erro ao notificar n8n:", e);
+                // Mesmo com erro de rede, permitimos que a UI avance
+            }
+
+            // Finaliza o carregamento visual e exibe o botão
+            document.getElementById('webhook-loading').classList.add('hidden');
+            document.getElementById('final-instruction').textContent = "Pode fechar esta página. O assistente continuará o atendimento de forma automática.";
+            
+            const btnWpp = document.getElementById('btn-return-whatsapp');
+            btnWpp.classList.remove('hidden');
+
+            // Regressa ao WhatsApp como atalho (sem pré-carregar nenhuma mensagem)
+            btnWpp.addEventListener('click', () => {
+                // Ao utilizar um link sem texto, o WhatsApp apenas reabre a conversa correta
+                window.location.href = `https://wa.me/${NUMERO_BOT_WHATSAPP}`;
+            });
         }
 
-        // Função para parar câmara
         function stopCamera() {
             if (webcamStream) {
                 webcamStream.getTracks().forEach(track => track.stop());
                 webcamVideo.srcObject = null;
             }
             if (detectionTimeout) clearTimeout(detectionTimeout);
-            stableFramesCount = 0; // Reset da estabilização
+            stableFramesCount = 0; 
         }
 
-        // Cancelar
-        btnCancel.addEventListener('click', () => {
-            stopCamera();
-            refUpload.value = '';
-            uploadText.textContent = "Carregar Fotografia de Referência";
-            refStatusMsg.textContent = '';
-            refImagePreview.classList.add('hidden');
-            refImagePlaceholder.classList.remove('hidden');
-            faceMatcher = null;
-            resetUploadState();
-
-            stepVerify.classList.add('hidden');
-            stepRegister.classList.remove('hidden');
+        // Se a pessoa clicar em "Cancelar Validação", avisamos o n8n que falhou
+        btnAbort.addEventListener('click', () => {
+            isSuccessfullyAuthenticated = true; // Para o loop da câmara
+            finishProcess('failed');
         });
 
-        // Alternar visualização da foto capturada
-        const btnTogglePhoto = document.getElementById('btn-toggle-photo');
-        const capturedPhotoSection = document.getElementById('captured-photo-section');
-        
-        btnTogglePhoto.addEventListener('click', () => {
-            if (capturedPhotoSection.classList.contains('hidden')) {
-                capturedPhotoSection.classList.remove('hidden');
-                btnTogglePhoto.textContent = "Ocultar foto da validação";
-            } else {
-                capturedPhotoSection.classList.add('hidden');
-                btnTogglePhoto.textContent = "Ver foto da validação";
-            }
-        });
-
-        window.addEventListener('load', loadModels);
     </script>
 </body>
 </html>
