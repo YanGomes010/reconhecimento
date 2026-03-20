@@ -21,19 +21,24 @@
             align-items: center;
             justify-content: center;
             z-index: 10;
-            background: radial-gradient(circle at center, transparent 30%, rgba(15, 23, 42, 0.85) 60%);
+            overflow: hidden;
         }
         .guide-oval {
-            width: 220px;
-            height: 300px;
+            width: 70vw;
+            height: 90vw;
+            max-width: 320px;
+            max-height: 450px;
             border-radius: 50%;
             border: 4px dashed rgba(255, 255, 255, 0.5);
             transition: all 0.3s ease;
-            box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.7); /* Efeito de escurecer as bordas */
+            box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.85); /* Efeito de escurecer o fundo */
         }
         /* Classes dinâmicas para o guia */
-        .guide-perfect { border-color: #10B981; border-style: solid; box-shadow: 0 0 20px #10B981, 0 0 0 9999px rgba(15, 23, 42, 0.7); }
+        .guide-perfect { border-color: #10B981; border-style: solid; box-shadow: 0 0 20px #10B981, 0 0 0 9999px rgba(15, 23, 42, 0.85); }
         .guide-error { border-color: #EF4444; border-style: solid; }
+        
+        /* Espelhar a câmara: Torna os movimentos intuitivos como um espelho de casa */
+        #webcam-video { transform: scaleX(-1); }
         
     </style>
 </head>
@@ -76,37 +81,34 @@
                     
                     <div class="flex-grow w-full">
                         <p class="text-slate-300 mb-4">Selecione uma foto do seu rosto em boas condições de luz para usar como referência no sistema.</p>
-                        <label class="block w-full cursor-pointer group">
+                        <label class="block w-full cursor-pointer group relative">
                             <input type="file" id="ref-upload" accept="image/*" class="hidden">
-                            <div class="w-full py-4 px-6 border-2 border-dashed border-slate-600 group-hover:border-blue-500 rounded-2xl text-center transition-colors bg-slate-900/50 flex items-center justify-center gap-3">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div class="w-full py-6 px-6 border-2 border-dashed border-slate-600 group-hover:border-blue-500 rounded-2xl text-center transition-colors bg-slate-900/50 flex flex-col items-center justify-center gap-3">
+                                <svg id="upload-icon" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                                 </svg>
+                                <div id="upload-spinner" class="hidden w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                                 <span id="upload-text" class="text-blue-400 font-semibold group-hover:text-blue-300">Carregar Fotografia de Referência</span>
                             </div>
+                            <!-- Blocker para impedir múltiplos cliques durante o loading -->
+                            <div id="upload-blocker" class="hidden absolute inset-0 rounded-2xl cursor-not-allowed z-10 bg-slate-900/50"></div>
                         </label>
                         <p id="ref-status-msg" class="text-xs mt-3 h-4 text-center"></p>
                     </div>
                 </div>
             </div>
 
-            <!-- PASSO 2: VERIFICAÇÃO ATIVA (ESTILO GOV.BR) -->
-            <div id="step-verify" class="hidden bg-slate-800 border border-slate-700 rounded-3xl p-8 shadow-xl fade-in">
-                <div class="flex items-center gap-4 mb-6 pb-4 border-b border-slate-700">
-                    <div class="p-3 bg-emerald-950 rounded-full text-emerald-400 text-2xl font-bold">2</div>
-                    <h3 class="text-2xl font-bold text-white">Verificação de Identidade</h3>
-                </div>
-                
-                <div class="text-center mb-6">
-                    <div id="instruction-box" class="bg-slate-900 border border-blue-500/50 p-4 rounded-xl inline-block w-full transition-colors duration-300">
-                        <h3 class="text-2xl font-bold text-white" id="verify-title">A aguardar câmara...</h3>
-                        <p class="text-slate-400 text-sm mt-1" id="verify-subtitle">Siga as instruções para enquadrar o seu rosto.</p>
-                    </div>
+            <!-- PASSO 2: VERIFICAÇÃO ATIVA (TELA CHEIA) -->
+            <div id="step-verify" class="hidden fixed inset-0 z-50 bg-black flex flex-col fade-in">
+                <!-- Barra de Instruções Flutuante -->
+                <div id="instruction-bar" class="absolute top-0 left-0 w-full p-6 bg-gradient-to-b from-black/90 to-transparent z-20 transition-colors duration-300 flex flex-col items-center text-center pt-10">
+                    <h3 class="text-2xl font-bold text-white drop-shadow-lg" id="verify-title">A aguardar câmara...</h3>
+                    <p class="text-slate-300 text-sm mt-1 drop-shadow-md font-medium" id="verify-subtitle">Siga as instruções para enquadrar o seu rosto.</p>
                 </div>
 
                 <!-- Container do Vídeo Proporcional -->
-                <div class="relative w-full aspect-[3/4] md:aspect-video rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-700 bg-black">
-                    <video id="webcam-video" autoplay muted playsinline class="w-full h-full object-cover"></video>
+                <div class="relative flex-grow w-full h-full overflow-hidden bg-black">
+                    <video id="webcam-video" autoplay muted playsinline class="absolute inset-0 w-full h-full object-cover"></video>
                     <!-- O Canvas agora fica escondido para os olhos do utilizador (UI mais limpa), é usado só para lógica -->
                     <canvas id="overlay-canvas" class="hidden"></canvas>
                     
@@ -116,9 +118,13 @@
                     </div>
                 </div>
                 
-                <div class="mt-6 flex justify-center">
-                    <button id="btn-cancel" class="text-slate-500 hover:text-slate-300 underline text-sm transition-colors">
-                        Cancelar e tentar outra foto
+                <!-- Botão Cancelar Flutuante na Base -->
+                <div class="absolute bottom-10 w-full flex justify-center z-20">
+                    <button id="btn-cancel" class="px-6 py-3 bg-red-600/80 hover:bg-red-500 text-white font-semibold rounded-full backdrop-blur-md transition-colors shadow-lg border border-red-400/30 flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                        Cancelar Validação
                     </button>
                 </div>
             </div>
@@ -190,7 +196,7 @@
         const stepVerify = document.getElementById('step-verify');
         const verifyTitle = document.getElementById('verify-title');
         const verifySubtitle = document.getElementById('verify-subtitle');
-        const instructionBox = document.getElementById('instruction-box');
+        const instructionBar = document.getElementById('instruction-bar');
         const webcamVideo = document.getElementById('webcam-video');
         const faceGuide = document.getElementById('face-guide');
         const btnCancel = document.getElementById('btn-cancel');
@@ -240,12 +246,26 @@
         // ==========================================
         // LÓGICA DE REGISTO (PASSO 1)
         // ==========================================
+        
+        function resetUploadState() {
+            document.getElementById('upload-blocker').classList.add('hidden');
+            document.getElementById('upload-icon').classList.remove('hidden');
+            document.getElementById('upload-spinner').classList.add('hidden');
+            refUpload.disabled = false;
+        }
+
         refUpload.addEventListener('change', async (e) => {
             if (!e.target.files.length) return;
             const file = e.target.files[0];
             
-            uploadText.textContent = "A analisar foto...";
-            refStatusMsg.textContent = "A aguardar validação biométrica...";
+            // Ativa o estado de Loading e bloqueia a interface
+            refUpload.disabled = true;
+            document.getElementById('upload-blocker').classList.remove('hidden');
+            document.getElementById('upload-icon').classList.add('hidden');
+            document.getElementById('upload-spinner').classList.remove('hidden');
+
+            uploadText.textContent = "A processar foto...";
+            refStatusMsg.textContent = "A aguardar extração biométrica...";
             refStatusMsg.className = "text-xs mt-3 h-4 text-center text-slate-400";
 
             const img = await faceapi.bufferToImage(file);
@@ -267,6 +287,7 @@
                     refImagePreview.classList.add('hidden');
                     refImagePlaceholder.classList.remove('hidden');
                     refUpload.value = '';
+                    resetUploadState();
                     return;
                 }
 
@@ -283,7 +304,10 @@
                 refStatusMsg.textContent = "Rosto identificado. A preparar sistema avançado...";
                 refStatusMsg.className = "text-xs mt-3 h-4 text-center text-emerald-400";
                 
-                setTimeout(startVerificationFlow, 1500);
+                setTimeout(() => {
+                    startVerificationFlow();
+                    resetUploadState(); // Limpa o estado para a próxima vez
+                }, 1500);
             } else {
                 uploadText.textContent = "❌ Erro no Registo";
                 refStatusMsg.textContent = "Não encontrámos um rosto claro na foto. Tente outra.";
@@ -291,6 +315,7 @@
                 refImagePreview.classList.add('hidden');
                 refImagePlaceholder.classList.remove('hidden');
                 refUpload.value = ''; 
+                resetUploadState(); // Liberta o botão para tentar novamente
             }
         });
 
@@ -323,21 +348,19 @@
             verifyTitle.textContent = title;
             verifySubtitle.textContent = subtitle;
             
-            // Limpa as classes de estado visual
-            instructionBox.className = "border p-4 rounded-xl inline-block w-full transition-colors duration-300 bg-slate-900";
             faceGuide.className = "guide-oval"; // Reseta as classes extra do oval
 
             if (state === "error") {
-                instructionBox.classList.add("border-red-500/50");
-                verifyTitle.classList.replace("text-white", "text-red-400");
+                instructionBar.className = "absolute top-0 left-0 w-full p-6 bg-gradient-to-b from-red-900/90 to-transparent z-20 transition-colors duration-300 flex flex-col items-center text-center pt-10";
+                verifyTitle.className = "text-2xl font-bold text-red-400 drop-shadow-lg";
                 faceGuide.classList.add("guide-error");
             } else if (state === "perfect") {
-                instructionBox.classList.add("border-emerald-500", "bg-emerald-900/30");
-                verifyTitle.classList.replace("text-white", "text-emerald-400");
+                instructionBar.className = "absolute top-0 left-0 w-full p-6 bg-gradient-to-b from-emerald-900/90 to-transparent z-20 transition-colors duration-300 flex flex-col items-center text-center pt-10";
+                verifyTitle.className = "text-2xl font-bold text-emerald-400 drop-shadow-lg";
                 faceGuide.classList.add("guide-perfect");
             } else {
-                instructionBox.classList.add("border-blue-500/50");
-                verifyTitle.className = "text-2xl font-bold text-white";
+                instructionBar.className = "absolute top-0 left-0 w-full p-6 bg-gradient-to-b from-black/90 to-transparent z-20 transition-colors duration-300 flex flex-col items-center text-center pt-10";
+                verifyTitle.className = "text-2xl font-bold text-white drop-shadow-lg";
             }
         }
 
@@ -376,17 +399,17 @@
                         const distX = Math.abs(videoCenterX - faceCenterX);
                         const distY = Math.abs(videoCenterY - faceCenterY);
                         
-                        // Tolerância de centralização (agora 10% para forçar alinhamento perfeito)
-                        const isCentered = distX < (webcamVideo.videoWidth * 0.10) && distY < (webcamVideo.videoHeight * 0.10);
+                        // Tolerância de centralização (aumentada para 20% para compensar o zoom visual)
+                        const isCentered = distX < (webcamVideo.videoWidth * 0.20) && distY < (webcamVideo.videoHeight * 0.20);
                         
-                        // Tamanho do rosto em proporção à câmara
+                        // Tamanho do rosto em proporção à câmara (Ajustado para o que é visível no ecrã)
                         const faceHeightRatio = box.height / webcamVideo.videoHeight;
                         
                         if (!isCentered) {
                             updateInstructions("Rosto Desalinhado", "Centralize o seu rosto dentro da marcação.", "error");
-                        } else if (faceHeightRatio < 0.50) { // Exige que chegue mais perto
+                        } else if (faceHeightRatio < 0.25) { // Era 0.50, reduzido para facilitar
                             updateInstructions("Aproxime-se mais", "Traga o seu rosto para mais perto da câmara.", "error");
-                        } else if (faceHeightRatio > 0.80) { // Rosto muito grande
+                        } else if (faceHeightRatio > 0.65) { // Era 0.80, reduzido
                             updateInstructions("Afaste-se um pouco", "O seu rosto está demasiado perto.", "error");
                         } else {
                             // ENQUADRAMENTO PERFEITO! -> Agora sim, ativamos a biometria
@@ -444,6 +467,7 @@
             refImagePreview.classList.add('hidden');
             refImagePlaceholder.classList.remove('hidden');
             faceMatcher = null;
+            resetUploadState();
 
             stepVerify.classList.add('hidden');
             stepRegister.classList.remove('hidden');
