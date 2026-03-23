@@ -105,7 +105,7 @@
                 </div>
                 
                 <div class="absolute bottom-10 w-full flex justify-center z-20 gap-4">
-                    <!-- Botão de Desistir (Aborta e notifica o n8n) -->
+                    <!-- Botão de Desistir -->
                     <button id="btn-abort" class="px-6 py-3 bg-red-600/80 hover:bg-red-500 text-white font-semibold rounded-full backdrop-blur-md transition-colors shadow-lg border border-red-400/30 flex items-center gap-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -126,12 +126,12 @@
                 <p id="final-subtitle" class="text-xl text-emerald-300 font-medium mb-4">O enquadramento facial e a identificação biométrica foram concluídos com sucesso.</p>
                 <p id="final-instruction" class="text-sm text-slate-400 mb-8">O sistema já sincronizou o resultado com o seu atendimento.</p>
                 
-                <div id="webhook-loading" class="mb-6 flex flex-col items-center">
+                <div id="webhook-loading" class="mb-6 flex flex-col items-center hidden">
                     <div class="w-8 h-8 border-4 border-slate-500 border-t-white rounded-full animate-spin mb-2"></div>
                     <span class="text-sm text-slate-400">A enviar dados de forma segura...</span>
                 </div>
 
-                <!-- Botão de Regresso ao WhatsApp (Abre apenas o app, sem forçar mensagem) -->
+                <!-- Botão de Regresso ao WhatsApp -->
                 <button id="btn-return-whatsapp" class="hidden mx-auto px-8 py-4 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold rounded-xl transition-colors shadow-lg flex items-center gap-3 text-lg">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M11.944 0A12 12 0 000 12a12 12 0 001.602 6.001L0 24l6.185-1.551A11.944 11.944 0 0012 24a12 12 0 0012-12A12 12 0 0012 0zm0 22.06c-1.87 0-3.692-.486-5.32-1.411l-.382-.218-3.951.99.99-3.951-.218-.382A10.02 10.02 0 011.944 12c0-5.545 4.51-10.055 10.055-10.055S22.056 6.455 22.056 12 17.545 22.056 12 22.056zm5.512-7.534c-.302-.15-1.782-.876-2.06-.976-.277-.1-.478-.15-.68.15s-.78 1.054-.956 1.254c-.175.2-.35.226-.653.076-2.126-1.042-3.41-2.288-4.32-3.86-.176-.301.077-.442.368-.975.05-.1.026-.176-.025-.276-.102-.2-.68-1.63-.93-2.23-.243-.586-.486-.5-.68-.51h-.578c-.2 0-.527.075-.804.376-.276.3-1.054 1.028-1.054 2.508 0 1.48 1.08 2.91 1.23 3.11.15.2 2.124 3.328 5.144 4.544.717.29 1.277.464 1.714.595.72.228 1.376.196 1.892.119.58-.087 1.782-.728 2.033-1.432.25-.704.25-1.306.175-1.432-.075-.126-.276-.2-.578-.35z"/>
@@ -147,15 +147,15 @@
         // ==========================================
         // CONFIGURAÇÕES DO N8N E WHATSAPP
         // ==========================================
-        const N8N_WEBHOOK_URL = "https://n8n-ouvidoria.tjrr.jus.br/webhook/biometria-retorno"; 
-        const NUMERO_BOT_WHATSAPP = "558005552233"; // Opcional: Apenas para facilitar o regresso ao App
+        const NUMERO_BOT_WHATSAPP = "5511999999999"; // Coloque o número do seu robô aqui!
         
         // ==========================================
-        // VERIFICAÇÃO DE SEGURANÇA (TOKEN)
+        // VERIFICAÇÃO DE SEGURANÇA (TOKEN) E SENHA
         // ==========================================
         const urlParams = new URLSearchParams(window.location.search);
         const userToken = urlParams.get('token');
         const phoneNumber = urlParams.get('telefone'); 
+        const secretCode = urlParams.get('secret'); // Pega o código secreto da URL (Gerado pelo n8n)
 
         if (!userToken) {
             // Sem token = Mostra bloqueio e não carrega IA
@@ -175,6 +175,11 @@
         let lastFaceCenter = { x: 0, y: 0 };
         let stableFramesCount = 0;
         const REQUIRED_STABLE_FRAMES = 6; 
+        
+        // VARIÁVEIS DE PROVA DE VIDA (PISCAR OLHOS)
+        let hasBlinked = false;
+        let isEyesClosed = false;
+        const BLINK_THRESHOLD = 0.25; // Limite da abertura do olho para considerar "fechado"
 
         const mainApp = document.getElementById('main-app');
         const stepRegister = document.getElementById('step-register');
@@ -193,6 +198,20 @@
         const btnAbort = document.getElementById('btn-abort');
         
         const successScreen = document.getElementById('success-screen');
+
+        // FUNÇÃO MATEMÁTICA PARA PROVA DE VIDA (Cálculo de Abertura do Olho)
+        function getEuclideanDistance(p1, p2) {
+            return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+        }
+
+        function getEAR(eye) {
+            // eye[1], eye[5] = pontos verticais
+            // eye[0], eye[3] = pontos horizontais
+            const v1 = getEuclideanDistance(eye[1], eye[5]);
+            const v2 = getEuclideanDistance(eye[2], eye[4]);
+            const h = getEuclideanDistance(eye[0], eye[3]);
+            return (v1 + v2) / (2.0 * h);
+        }
 
         function cropFaceToDataURL(source, box, isVideo = false) {
             const sourceW = isVideo ? source.videoWidth : (source.naturalWidth || source.width);
@@ -308,6 +327,9 @@
             if (!faceMatcher) return;
             isSuccessfullyAuthenticated = false;
             stableFramesCount = 0; 
+            hasBlinked = false;
+            isEyesClosed = false;
+            
             stepRegister.classList.add('hidden');
             stepVerify.classList.remove('hidden');
 
@@ -351,11 +373,14 @@
                     if (detections.length === 0) {
                         updateInstructions("Nenhum rosto detetado", "Olhe diretamente para a câmara.", "error");
                         stableFramesCount = 0;
+                        hasBlinked = false; // Exige piscar novamente se perder o rosto
                     } else if (detections.length > 1) {
                         updateInstructions("Várias pessoas detetadas", "Por favor, fique sozinho na câmara.", "error");
                         stableFramesCount = 0;
                     } else {
                         const box = detections[0].detection.box;
+                        const landmarks = detections[0].landmarks;
+                        
                         const faceCenterX = box.x + (box.width / 2);
                         const faceCenterY = box.y + (box.height / 2);
                         const distX = Math.abs((webcamVideo.videoWidth / 2) - faceCenterX);
@@ -364,41 +389,68 @@
                         const isCentered = distX < (webcamVideo.videoWidth * 0.20) && distY < (webcamVideo.videoHeight * 0.20);
                         const faceHeightRatio = box.height / webcamVideo.videoHeight;
                         
+                        // 1. VERIFICAR ENQUADRAMENTO
                         if (!isCentered) {
                             updateInstructions("Rosto Desalinhado", "Centralize o seu rosto dentro da marcação.", "error");
                             stableFramesCount = 0;
+                            hasBlinked = false;
                         } else if (faceHeightRatio < 0.25) { 
                             updateInstructions("Aproxime-se mais", "Traga o seu rosto para mais perto.", "error");
                             stableFramesCount = 0;
+                            hasBlinked = false;
                         } else if (faceHeightRatio > 0.65) { 
                             updateInstructions("Afaste-se um pouco", "O seu rosto está demasiado perto.", "error");
                             stableFramesCount = 0;
+                            hasBlinked = false;
                         } else {
-                            const moveDistX = Math.abs(faceCenterX - lastFaceCenter.x);
-                            const moveDistY = Math.abs(faceCenterY - lastFaceCenter.y);
-                            const movementTolerance = webcamVideo.videoWidth * 0.02;
+                            
+                            // 2. PROVA DE VIDA (PISCAR OLHOS)
+                            if (!hasBlinked) {
+                                updateInstructions("Prova de Vida", "Pisque os olhos lentamente.", "normal");
+                                
+                                const leftEye = landmarks.getLeftEye();
+                                const rightEye = landmarks.getRightEye();
+                                const avgEAR = (getEAR(leftEye) + getEAR(rightEye)) / 2.0;
 
-                            if (moveDistX < movementTolerance && moveDistY < movementTolerance) {
-                                stableFramesCount++;
-                                if (stableFramesCount < REQUIRED_STABLE_FRAMES) {
-                                    updateInstructions("Mantenha-se imóvel", "A focar a câmara...", "perfect");
-                                } else {
-                                    updateInstructions("Enquadramento Perfeito", "A validar identidade...", "perfect");
-                                    const match = faceMatcher.findBestMatch(detections[0].descriptor);
-                                    
-                                    if (match.label !== 'unknown') {
-                                        isSuccessfullyAuthenticated = true;
-                                        setTimeout(() => finishProcess('success'), 500);
-                                    } else {
-                                        updateInstructions("Não Reconhecido", "Rosto não corresponde à foto de registo.", "error");
-                                        stableFramesCount = 0; 
-                                    }
+                                if (avgEAR < BLINK_THRESHOLD) {
+                                    isEyesClosed = true;
+                                } else if (isEyesClosed && avgEAR >= BLINK_THRESHOLD) {
+                                    hasBlinked = true; // Piscou!
+                                    isEyesClosed = false;
                                 }
+                                
+                                stableFramesCount = 0; // Impede validação final até piscar
+                                lastFaceCenter = { x: faceCenterX, y: faceCenterY };
+                                
                             } else {
-                                stableFramesCount = 0;
-                                updateInstructions("Quase lá...", "Pare de se mexer para focar a foto.", "normal");
+                                // 3. ESTABILIZAÇÃO E RECONHECIMENTO BIOMÉTRICO (Só depois de piscar)
+                                const moveDistX = Math.abs(faceCenterX - lastFaceCenter.x);
+                                const moveDistY = Math.abs(faceCenterY - lastFaceCenter.y);
+                                const movementTolerance = webcamVideo.videoWidth * 0.02;
+
+                                if (moveDistX < movementTolerance && moveDistY < movementTolerance) {
+                                    stableFramesCount++;
+                                    if (stableFramesCount < REQUIRED_STABLE_FRAMES) {
+                                        updateInstructions("Mantenha-se imóvel", "A focar a câmara...", "perfect");
+                                    } else {
+                                        updateInstructions("Enquadramento Perfeito", "A validar identidade...", "perfect");
+                                        const match = faceMatcher.findBestMatch(detections[0].descriptor);
+                                        
+                                        if (match.label !== 'unknown') {
+                                            isSuccessfullyAuthenticated = true;
+                                            setTimeout(() => finishProcess('success'), 500);
+                                        } else {
+                                            updateInstructions("Não Reconhecido", "Rosto não corresponde à foto de registo.", "error");
+                                            stableFramesCount = 0; 
+                                            hasBlinked = false; // Obriga a provar de novo em caso de erro
+                                        }
+                                    }
+                                } else {
+                                    stableFramesCount = 0;
+                                    updateInstructions("Quase lá...", "Pare de se mexer para focar a foto.", "normal");
+                                }
+                                lastFaceCenter = { x: faceCenterX, y: faceCenterY };
                             }
-                            lastFaceCenter = { x: faceCenterX, y: faceCenterY };
                         }
                     }
                 }
@@ -408,7 +460,7 @@
         });
 
         // ==========================================
-        // FINALIZAÇÃO E ENVIO PARA O N8N
+        // FINALIZAÇÃO E REGRESSO AO WHATSAPP
         // ==========================================
         async function finishProcess(status) {
             stopCamera();
@@ -417,7 +469,6 @@
 
             const isSuccess = status === 'success';
             
-            // Muda UI dependendo se foi sucesso ou se desistiu
             if (!isSuccess) {
                 successScreen.classList.replace('border-emerald-500', 'border-red-500');
                 document.getElementById('final-icon-container').classList.replace('bg-emerald-600', 'bg-red-600');
@@ -427,34 +478,17 @@
                 document.getElementById('final-subtitle').classList.replace('text-emerald-300', 'text-red-300');
             }
 
-            // Notifica o n8n sobre o resultado e aguarda a sincronização
-            try {
-                await fetch(N8N_WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        token: userToken, 
-                        telefone: phoneNumber,
-                        resultado: status,
-                        timestamp: new Date().toISOString()
-                    })
-                });
-            } catch (e) {
-                console.error("Erro ao notificar n8n:", e);
-                // Mesmo com erro de rede, permitimos que a UI avance
-            }
-
-            // Finaliza o carregamento visual e exibe o botão
-            document.getElementById('webhook-loading').classList.add('hidden');
-            document.getElementById('final-instruction').textContent = "Pode fechar esta página. O assistente continuará o atendimento de forma automática.";
+            document.getElementById('final-instruction').textContent = "Clique no botão abaixo para enviar a confirmação ao assistente virtual.";
             
             const btnWpp = document.getElementById('btn-return-whatsapp');
             btnWpp.classList.remove('hidden');
 
-            // Regressa ao WhatsApp como atalho (sem pré-carregar nenhuma mensagem)
             btnWpp.addEventListener('click', () => {
-                // Ao utilizar um link sem texto, o WhatsApp apenas reabre a conversa correta
-                window.location.href = `https://wa.me/${NUMERO_BOT_WHATSAPP}`;
+                let mensagemFinal = isSuccess ? 
+                    `✅ Biometria Validada! Meu código de segurança é: ${secretCode}` : 
+                    `❌ Não consegui validar a biometria.`;
+                
+                window.location.href = `https://wa.me/${NUMERO_BOT_WHATSAPP}?text=${encodeURIComponent(mensagemFinal)}`;
             });
         }
 
@@ -465,11 +499,11 @@
             }
             if (detectionTimeout) clearTimeout(detectionTimeout);
             stableFramesCount = 0; 
+            hasBlinked = false;
         }
 
-        // Se a pessoa clicar em "Cancelar Validação", avisamos o n8n que falhou
         btnAbort.addEventListener('click', () => {
-            isSuccessfullyAuthenticated = true; // Para o loop da câmara
+            isSuccessfullyAuthenticated = true; 
             finishProcess('failed');
         });
 
