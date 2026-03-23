@@ -1,512 +1,859 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-PT">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Autenticação Biométrica Ativa</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
     <style>
-        .canvas-container { position: relative; display: flex; justify-content: center; width: 100%; max-width: 640px; margin: 0 auto; background-color: #000; border-radius: 1.5rem; overflow: hidden;}
-        video, canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; }
-        .fade-in { animation: fadeIn 0.5s ease-in-out; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
-        .guide-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; display: flex; align-items: center; justify-content: center;
-            z-index: 10; overflow: hidden;
+      .canvas-container {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        width: 100%;
+        max-width: 640px;
+        margin: 0 auto;
+        background-color: #000;
+        border-radius: 1.5rem;
+        overflow: hidden;
+      }
+      video,
+      canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .fade-in {
+        animation: fadeIn 0.5s ease-in-out;
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
         }
-        .guide-oval {
-            width: 70vw; height: 90vw; max-width: 320px; max-height: 450px;
-            border-radius: 50%; border: 4px dashed rgba(255, 255, 255, 0.5);
-            transition: all 0.3s ease; box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.85);
+        to {
+          opacity: 1;
+          transform: translateY(0);
         }
-        .guide-perfect { border-color: #10B981; border-style: solid; box-shadow: 0 0 20px #10B981, 0 0 0 9999px rgba(15, 23, 42, 0.85); }
-        .guide-error { border-color: #EF4444; border-style: solid; }
-        #webcam-video { transform: scaleX(-1); }
+      }
+
+      .guide-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+        overflow: hidden;
+      }
+      .guide-oval {
+        width: 70vw;
+        height: 90vw;
+        max-width: 320px;
+        max-height: 450px;
+        border-radius: 50%;
+        border: 4px dashed rgba(255, 255, 255, 0.5);
+        transition: all 0.3s ease;
+        box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.85);
+      }
+      .guide-perfect {
+        border-color: #10b981;
+        border-style: solid;
+        box-shadow:
+          0 0 20px #10b981,
+          0 0 0 9999px rgba(15, 23, 42, 0.85);
+      }
+      .guide-error {
+        border-color: #ef4444;
+        border-style: solid;
+      }
+      #webcam-video {
+        transform: scaleX(-1);
+      }
     </style>
-</head>
-<body class="bg-slate-950 text-slate-100 font-sans min-h-screen p-4 md:p-8 flex justify-center">
-
+  </head>
+  <body
+    class="bg-slate-950 text-slate-100 font-sans min-h-screen p-4 md:p-8 flex justify-center"
+  >
     <div class="max-w-3xl w-full space-y-6">
-        
-        <div class="text-center space-y-2 mb-10">
-            <h1 class="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 tracking-tight">
-                Portal de Acesso Biométrico
-            </h1>
-            <p class="text-slate-400 text-lg">Validação de identidade avançada interligada ao sistema.</p>
+      <div class="text-center space-y-2 mb-10">
+        <h1
+          class="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400 tracking-tight"
+        >
+          Portal de Acesso Biométrico
+        </h1>
+        <p class="text-slate-400 text-lg">
+          Validação de identidade avançada interligada ao sistema.
+        </p>
+      </div>
+
+      <!-- ECRÃ DE BLOQUEIO (SEM TOKEN) -->
+      <div
+        id="no-token-screen"
+        class="hidden bg-red-950/50 border-4 border-red-500 rounded-3xl p-10 text-center shadow-2xl fade-in"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-20 w-20 text-red-500 mx-auto mb-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+          />
+        </svg>
+        <h2 class="text-3xl font-extrabold text-white mb-4">Acesso Negado</h2>
+        <p class="text-lg text-slate-300 mb-8">
+          Esta página só pode ser acedida através de um link seguro enviado pelo
+          nosso assistente virtual no WhatsApp.
+        </p>
+        <p class="text-sm text-slate-500">
+          Por favor, regresse ao WhatsApp e clique no link fornecido na
+          conversa.
+        </p>
+      </div>
+
+      <!-- Painel de Loading -->
+      <div
+        id="status-panel"
+        class="hidden bg-slate-800 border border-slate-700 rounded-3xl p-8 text-center shadow-2xl transition-all duration-300"
+      >
+        <div
+          id="loading-spinner"
+          class="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-5"
+        ></div>
+        <h2 id="status-title" class="text-2xl font-bold text-white mb-3">
+          A carregar IA...
+        </h2>
+        <p id="status-message" class="text-slate-400">
+          Estamos a preparar os modelos de reconhecimento facial.
+        </p>
+      </div>
+
+      <div id="main-app" class="hidden space-y-10 fade-in">
+        <!-- PASSO 1: REGISTO -->
+        <div
+          id="step-register"
+          class="bg-slate-800 border border-slate-700 rounded-3xl p-8 shadow-xl"
+        >
+          <div
+            class="flex items-center gap-4 mb-6 pb-4 border-b border-slate-700"
+          >
+            <div
+              class="p-3 bg-blue-950 rounded-full text-blue-400 text-2xl font-bold"
+            >
+              1
+            </div>
+            <h3 class="text-2xl font-bold text-white">
+              Registe a sua Fotografia
+            </h3>
+          </div>
+
+          <div class="flex flex-col md:flex-row items-center gap-8">
+            <div class="relative w-32 h-32 flex-shrink-0">
+              <img
+                id="ref-image-preview"
+                src=""
+                class="w-full h-auto hidden rounded-full object-cover border-4 border-slate-600 shadow-lg bg-slate-700"
+              />
+              <div
+                id="ref-image-placeholder"
+                class="w-full h-full rounded-full bg-slate-700 border-4 border-dashed border-slate-500 flex items-center justify-center text-slate-500"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="h-12 w-12"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                  />
+                </svg>
+              </div>
+            </div>
+
+            <div class="flex-grow w-full">
+              <p class="text-slate-300 mb-4">
+                Selecione uma foto do seu rosto em boas condições de luz para
+                usar como referência no sistema.
+              </p>
+              <label class="block w-full cursor-pointer group relative">
+                <input
+                  type="file"
+                  id="ref-upload"
+                  accept="image/*"
+                  class="hidden"
+                />
+                <div
+                  class="w-full py-6 px-6 border-2 border-dashed border-slate-600 group-hover:border-blue-500 rounded-2xl text-center transition-colors bg-slate-900/50 flex flex-col items-center justify-center gap-3"
+                >
+                  <svg
+                    id="upload-icon"
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-8 w-8 text-blue-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                    />
+                  </svg>
+                  <div
+                    id="upload-spinner"
+                    class="hidden w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"
+                  ></div>
+                  <span
+                    id="upload-text"
+                    class="text-blue-400 font-semibold group-hover:text-blue-300"
+                    >Carregar Fotografia de Referência</span
+                  >
+                </div>
+                <div
+                  id="upload-blocker"
+                  class="hidden absolute inset-0 rounded-2xl cursor-not-allowed z-10 bg-slate-900/50"
+                ></div>
+              </label>
+              <p id="ref-status-msg" class="text-xs mt-3 h-4 text-center"></p>
+            </div>
+          </div>
         </div>
 
-        <!-- ECRÃ DE BLOQUEIO (SEM TOKEN) -->
-        <div id="no-token-screen" class="hidden bg-red-950/50 border-4 border-red-500 rounded-3xl p-10 text-center shadow-2xl fade-in">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-20 w-20 text-red-500 mx-auto mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        <!-- PASSO 2: VERIFICAÇÃO ATIVA -->
+        <div
+          id="step-verify"
+          class="hidden fixed inset-0 z-50 bg-black flex flex-col fade-in"
+        >
+          <div
+            id="instruction-bar"
+            class="absolute top-0 left-0 w-full p-6 bg-gradient-to-b from-black/90 to-transparent z-20 transition-colors duration-300 flex flex-col items-center text-center pt-10"
+          >
+            <h3
+              class="text-2xl font-bold text-white drop-shadow-lg"
+              id="verify-title"
+            >
+              A aguardar câmara...
+            </h3>
+            <p
+              class="text-slate-300 text-sm mt-1 drop-shadow-md font-medium"
+              id="verify-subtitle"
+            >
+              Siga as instruções para enquadrar o seu rosto.
+            </p>
+          </div>
+
+          <div
+            class="relative flex-grow w-full h-full overflow-hidden bg-black"
+          >
+            <video
+              id="webcam-video"
+              autoplay
+              muted
+              playsinline
+              class="absolute inset-0 w-full h-full object-cover"
+            ></video>
+            <canvas id="overlay-canvas" class="hidden"></canvas>
+            <div class="guide-overlay">
+              <div id="face-guide" class="guide-oval"></div>
+            </div>
+          </div>
+
+          <div class="absolute bottom-10 w-full flex justify-center z-20 gap-4">
+            <!-- Botão de Desistir -->
+            <button
+              id="btn-abort"
+              class="px-6 py-3 bg-red-600/80 hover:bg-red-500 text-white font-semibold rounded-full backdrop-blur-md transition-colors shadow-lg border border-red-400/30 flex items-center gap-2"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+              Cancelar Validação
+            </button>
+          </div>
+        </div>
+
+        <!-- RESULTADO FINAL: SUCESSO OU FALHA -->
+        <div
+          id="success-screen"
+          class="hidden bg-slate-900 border-4 border-emerald-500 rounded-3xl p-10 text-center shadow-2xl fade-in"
+        >
+          <div
+            id="final-icon-container"
+            class="w-24 h-24 rounded-full bg-emerald-600 flex items-center justify-center mx-auto mb-6 shadow-lg"
+          >
+            <svg
+              id="final-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-16 w-16 text-white"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="3"
+                d="M5 13l4 4L19 7"
+              />
             </svg>
-            <h2 class="text-3xl font-extrabold text-white mb-4">Acesso Negado</h2>
-            <p class="text-lg text-slate-300 mb-8">Esta página só pode ser acedida através de um link seguro enviado pelo nosso assistente virtual no WhatsApp.</p>
-            <p class="text-sm text-slate-500">Por favor, regresse ao WhatsApp e clique no link fornecido na conversa.</p>
+          </div>
+          <h2
+            id="final-title"
+            class="text-4xl font-extrabold text-white mb-4 track-tight"
+          >
+            Identidade Validada!
+          </h2>
+          <p
+            id="final-subtitle"
+            class="text-xl text-emerald-300 font-medium mb-4"
+          >
+            O enquadramento facial e a identificação biométrica foram concluídos
+            com sucesso.
+          </p>
+          <p id="final-instruction" class="text-sm text-slate-400 mb-8">
+            O sistema já sincronizou o resultado com o seu atendimento.
+          </p>
+
+          <div
+            id="webhook-loading"
+            class="mb-6 flex flex-col items-center hidden"
+          >
+            <div
+              class="w-8 h-8 border-4 border-slate-500 border-t-white rounded-full animate-spin mb-2"
+            ></div>
+            <span class="text-sm text-slate-400"
+              >A enviar dados de forma segura...</span
+            >
+          </div>
+
+          <!-- Botão de Regresso ao WhatsApp -->
+          <button
+            id="btn-return-whatsapp"
+            class="hidden mx-auto px-8 py-4 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold rounded-xl transition-colors shadow-lg flex items-center gap-3 text-lg"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-7 w-7"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                d="M11.944 0A12 12 0 000 12a12 12 0 001.602 6.001L0 24l6.185-1.551A11.944 11.944 0 0012 24a12 12 0 0012-12A12 12 0 0012 0zm0 22.06c-1.87 0-3.692-.486-5.32-1.411l-.382-.218-3.951.99.99-3.951-.218-.382A10.02 10.02 0 011.944 12c0-5.545 4.51-10.055 10.055-10.055S22.056 6.455 22.056 12 17.545 22.056 12 22.056zm5.512-7.534c-.302-.15-1.782-.876-2.06-.976-.277-.1-.478-.15-.68.15s-.78 1.054-.956 1.254c-.175.2-.35.226-.653.076-2.126-1.042-3.41-2.288-4.32-3.86-.176-.301.077-.442.368-.975.05-.1.026-.176-.025-.276-.102-.2-.68-1.63-.93-2.23-.243-.586-.486-.5-.68-.51h-.578c-.2 0-.527.075-.804.376-.276.3-1.054 1.028-1.054 2.508 0 1.48 1.08 2.91 1.23 3.11.15.2 2.124 3.328 5.144 4.544.717.29 1.277.464 1.714.595.72.228 1.376.196 1.892.119.58-.087 1.782-.728 2.033-1.432.25-.704.25-1.306.175-1.432-.075-.126-.276-.2-.578-.35z"
+              />
+            </svg>
+            Regressar ao Atendimento
+          </button>
         </div>
-
-        <!-- Painel de Loading -->
-        <div id="status-panel" class="hidden bg-slate-800 border border-slate-700 rounded-3xl p-8 text-center shadow-2xl transition-all duration-300">
-            <div id="loading-spinner" class="inline-block w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-5"></div>
-            <h2 id="status-title" class="text-2xl font-bold text-white mb-3">A carregar IA...</h2>
-            <p id="status-message" class="text-slate-400">Estamos a preparar os modelos de reconhecimento facial.</p>
-        </div>
-
-        <div id="main-app" class="hidden space-y-10 fade-in">
-            <!-- PASSO 1: REGISTO -->
-            <div id="step-register" class="bg-slate-800 border border-slate-700 rounded-3xl p-8 shadow-xl">
-                <div class="flex items-center gap-4 mb-6 pb-4 border-b border-slate-700">
-                    <div class="p-3 bg-blue-950 rounded-full text-blue-400 text-2xl font-bold">1</div>
-                    <h3 class="text-2xl font-bold text-white">Registe a sua Fotografia</h3>
-                </div>
-                
-                <div class="flex flex-col md:flex-row items-center gap-8">
-                    <div class="relative w-32 h-32 flex-shrink-0">
-                        <img id="ref-image-preview" src="" class="w-full h-auto hidden rounded-full object-cover border-4 border-slate-600 shadow-lg bg-slate-700">
-                        <div id="ref-image-placeholder" class="w-full h-full rounded-full bg-slate-700 border-4 border-dashed border-slate-500 flex items-center justify-center text-slate-500">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                        </div>
-                    </div>
-                    
-                    <div class="flex-grow w-full">
-                        <p class="text-slate-300 mb-4">Selecione uma foto do seu rosto em boas condições de luz para usar como referência no sistema.</p>
-                        <label class="block w-full cursor-pointer group relative">
-                            <input type="file" id="ref-upload" accept="image/*" class="hidden">
-                            <div class="w-full py-6 px-6 border-2 border-dashed border-slate-600 group-hover:border-blue-500 rounded-2xl text-center transition-colors bg-slate-900/50 flex flex-col items-center justify-center gap-3">
-                                <svg id="upload-icon" xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                </svg>
-                                <div id="upload-spinner" class="hidden w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                                <span id="upload-text" class="text-blue-400 font-semibold group-hover:text-blue-300">Carregar Fotografia de Referência</span>
-                            </div>
-                            <div id="upload-blocker" class="hidden absolute inset-0 rounded-2xl cursor-not-allowed z-10 bg-slate-900/50"></div>
-                        </label>
-                        <p id="ref-status-msg" class="text-xs mt-3 h-4 text-center"></p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- PASSO 2: VERIFICAÇÃO ATIVA -->
-            <div id="step-verify" class="hidden fixed inset-0 z-50 bg-black flex flex-col fade-in">
-                <div id="instruction-bar" class="absolute top-0 left-0 w-full p-6 bg-gradient-to-b from-black/90 to-transparent z-20 transition-colors duration-300 flex flex-col items-center text-center pt-10">
-                    <h3 class="text-2xl font-bold text-white drop-shadow-lg" id="verify-title">A aguardar câmara...</h3>
-                    <p class="text-slate-300 text-sm mt-1 drop-shadow-md font-medium" id="verify-subtitle">Siga as instruções para enquadrar o seu rosto.</p>
-                </div>
-
-                <div class="relative flex-grow w-full h-full overflow-hidden bg-black">
-                    <video id="webcam-video" autoplay muted playsinline class="absolute inset-0 w-full h-full object-cover"></video>
-                    <canvas id="overlay-canvas" class="hidden"></canvas>
-                    <div class="guide-overlay"><div id="face-guide" class="guide-oval"></div></div>
-                </div>
-                
-                <div class="absolute bottom-10 w-full flex justify-center z-20 gap-4">
-                    <!-- Botão de Desistir -->
-                    <button id="btn-abort" class="px-6 py-3 bg-red-600/80 hover:bg-red-500 text-white font-semibold rounded-full backdrop-blur-md transition-colors shadow-lg border border-red-400/30 flex items-center gap-2">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                        Cancelar Validação
-                    </button>
-                </div>
-            </div>
-            
-            <!-- RESULTADO FINAL: SUCESSO OU FALHA -->
-            <div id="success-screen" class="hidden bg-slate-900 border-4 border-emerald-500 rounded-3xl p-10 text-center shadow-2xl fade-in">
-                <div id="final-icon-container" class="w-24 h-24 rounded-full bg-emerald-600 flex items-center justify-center mx-auto mb-6 shadow-lg">
-                    <svg id="final-icon" xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-                    </svg>
-                </div>
-                <h2 id="final-title" class="text-4xl font-extrabold text-white mb-4 track-tight">Identidade Validada!</h2>
-                <p id="final-subtitle" class="text-xl text-emerald-300 font-medium mb-4">O enquadramento facial e a identificação biométrica foram concluídos com sucesso.</p>
-                <p id="final-instruction" class="text-sm text-slate-400 mb-8">O sistema já sincronizou o resultado com o seu atendimento.</p>
-                
-                <div id="webhook-loading" class="mb-6 flex flex-col items-center hidden">
-                    <div class="w-8 h-8 border-4 border-slate-500 border-t-white rounded-full animate-spin mb-2"></div>
-                    <span class="text-sm text-slate-400">A enviar dados de forma segura...</span>
-                </div>
-
-                <!-- Botão de Regresso ao WhatsApp -->
-                <button id="btn-return-whatsapp" class="hidden mx-auto px-8 py-4 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold rounded-xl transition-colors shadow-lg flex items-center gap-3 text-lg">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M11.944 0A12 12 0 000 12a12 12 0 001.602 6.001L0 24l6.185-1.551A11.944 11.944 0 0012 24a12 12 0 0012-12A12 12 0 0012 0zm0 22.06c-1.87 0-3.692-.486-5.32-1.411l-.382-.218-3.951.99.99-3.951-.218-.382A10.02 10.02 0 011.944 12c0-5.545 4.51-10.055 10.055-10.055S22.056 6.455 22.056 12 17.545 22.056 12 22.056zm5.512-7.534c-.302-.15-1.782-.876-2.06-.976-.277-.1-.478-.15-.68.15s-.78 1.054-.956 1.254c-.175.2-.35.226-.653.076-2.126-1.042-3.41-2.288-4.32-3.86-.176-.301.077-.442.368-.975.05-.1.026-.176-.025-.276-.102-.2-.68-1.63-.93-2.23-.243-.586-.486-.5-.68-.51h-.578c-.2 0-.527.075-.804.376-.276.3-1.054 1.028-1.054 2.508 0 1.48 1.08 2.91 1.23 3.11.15.2 2.124 3.328 5.144 4.544.717.29 1.277.464 1.714.595.72.228 1.376.196 1.892.119.58-.087 1.782-.728 2.033-1.432.25-.704.25-1.306.175-1.432-.075-.126-.276-.2-.578-.35z"/>
-                    </svg>
-                    Regressar ao Atendimento
-                </button>
-            </div>
-
-        </div>
+      </div>
     </div>
 
     <script>
-        // ==========================================
-        // CONFIGURAÇÕES DO N8N E WHATSAPP
-        // ==========================================
-        const NUMERO_BOT_WHATSAPP = "5511999999999"; // Coloque o número do seu robô aqui!
-        
-        // ==========================================
-        // VERIFICAÇÃO DE SEGURANÇA (TOKEN) E SENHA
-        // ==========================================
-        const urlParams = new URLSearchParams(window.location.search);
-        const userToken = urlParams.get('token');
-        const phoneNumber = urlParams.get('telefone'); 
-        const secretCode = urlParams.get('secret'); // Pega o código secreto da URL (Gerado pelo n8n)
+      // ==========================================
+      // CONFIGURAÇÕES DO N8N E WHATSAPP
+      // ==========================================
+      const NUMERO_BOT_WHATSAPP = "5511999999999"; // Coloque o número do seu robô aqui!
 
-        if (!userToken) {
-            // Sem token = Mostra bloqueio e não carrega IA
-            document.getElementById('no-token-screen').classList.remove('hidden');
+      // ==========================================
+      // VERIFICAÇÃO DE SEGURANÇA (TOKEN) E SENHA
+      // ==========================================
+      const urlParams = new URLSearchParams(window.location.search);
+      const userToken = urlParams.get("token");
+      const phoneNumber = urlParams.get("telefone");
+      const hash = urlParams.get("hash");
+      let secretCode = "";
+
+      // Descriptografa o hash silenciosamente para o botão final do WhatsApp
+      if (hash) {
+        try {
+          // Converte de volta de Base64 e remove a "máscara" TJRR-
+          secretCode = atob(hash).replace("TJRR-", "");
+        } catch (e) {
+          console.error("Link de segurança inválido ou corrompido.");
+        }
+      }
+
+      if (!userToken) {
+        // Sem token = Mostra bloqueio e não carrega IA
+        document.getElementById("no-token-screen").classList.remove("hidden");
+      } else {
+        // Com token = Mostra loading e inicia processo
+        document.getElementById("status-panel").classList.remove("hidden");
+        window.addEventListener("load", loadModels);
+      }
+
+      const MODEL_URL =
+        "https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/";
+      let faceMatcher = null;
+      let webcamStream = null;
+      let detectionTimeout = null;
+      let isSuccessfullyAuthenticated = false;
+
+      let lastFaceCenter = { x: 0, y: 0 };
+      let stableFramesCount = 0;
+      const REQUIRED_STABLE_FRAMES = 6;
+
+      // VARIÁVEIS DE PROVA DE VIDA (PISCAR OLHOS)
+      let hasBlinked = false;
+      let isEyesClosed = false;
+      const BLINK_THRESHOLD = 0.25; // Limite da abertura do olho para considerar "fechado"
+
+      const mainApp = document.getElementById("main-app");
+      const stepRegister = document.getElementById("step-register");
+      const refUpload = document.getElementById("ref-upload");
+      const refImagePreview = document.getElementById("ref-image-preview");
+      const refImagePlaceholder = document.getElementById(
+        "ref-image-placeholder",
+      );
+      const uploadText = document.getElementById("upload-text");
+      const refStatusMsg = document.getElementById("ref-status-msg");
+
+      const stepVerify = document.getElementById("step-verify");
+      const verifyTitle = document.getElementById("verify-title");
+      const verifySubtitle = document.getElementById("verify-subtitle");
+      const instructionBar = document.getElementById("instruction-bar");
+      const webcamVideo = document.getElementById("webcam-video");
+      const faceGuide = document.getElementById("face-guide");
+      const btnAbort = document.getElementById("btn-abort");
+
+      const successScreen = document.getElementById("success-screen");
+
+      // FUNÇÃO MATEMÁTICA PARA PROVA DE VIDA (Cálculo de Abertura do Olho)
+      function getEuclideanDistance(p1, p2) {
+        return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+      }
+
+      function getEAR(eye) {
+        // eye[1], eye[5] = pontos verticais
+        // eye[0], eye[3] = pontos horizontais
+        const v1 = getEuclideanDistance(eye[1], eye[5]);
+        const v2 = getEuclideanDistance(eye[2], eye[4]);
+        const h = getEuclideanDistance(eye[0], eye[3]);
+        return (v1 + v2) / (2.0 * h);
+      }
+
+      function cropFaceToDataURL(source, box, isVideo = false) {
+        const sourceW = isVideo
+          ? source.videoWidth
+          : source.naturalWidth || source.width;
+        const sourceH = isVideo
+          ? source.videoHeight
+          : source.naturalHeight || source.height;
+        const centerX = box.x + box.width / 2;
+        const centerY = box.y + box.height / 2;
+        const faceSize = Math.max(box.width, box.height);
+        const cropSize = faceSize * 1.8;
+
+        let startX = centerX - cropSize / 2;
+        let startY = centerY - cropSize / 2 - faceSize * 0.1;
+
+        const canvas = document.createElement("canvas");
+        canvas.width = cropSize;
+        canvas.height = cropSize;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#0f172a";
+        ctx.fillRect(0, 0, cropSize, cropSize);
+
+        if (isVideo) {
+          ctx.translate(cropSize, 0);
+          ctx.scale(-1, 1);
+        }
+
+        const sX = Math.max(0, startX);
+        const sY = Math.max(0, startY);
+        const sW = Math.min(sourceW - sX, cropSize - (sX - startX));
+        const sH = Math.min(sourceH - sY, cropSize - (sY - startY));
+        const dX = sX - startX;
+        const dY = sY - startY;
+
+        ctx.drawImage(source, sX, sY, sW, sH, dX, dY, sW, sH);
+        return canvas.toDataURL("image/jpeg", 0.95);
+      }
+
+      async function loadModels() {
+        try {
+          await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
+          await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+          await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+          await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+          document.getElementById("status-panel").classList.add("hidden");
+          mainApp.classList.remove("hidden");
+        } catch (err) {
+          document.getElementById("status-title").textContent = "Erro na IA";
+          document.getElementById("status-message").textContent =
+            "Não foi possível carregar os modelos.";
+        }
+      }
+
+      function resetUploadState() {
+        document.getElementById("upload-blocker").classList.add("hidden");
+        document.getElementById("upload-icon").classList.remove("hidden");
+        document.getElementById("upload-spinner").classList.add("hidden");
+        refUpload.disabled = false;
+      }
+
+      refUpload.addEventListener("change", async (e) => {
+        if (!e.target.files.length) return;
+        const file = e.target.files[0];
+
+        refUpload.disabled = true;
+        document.getElementById("upload-blocker").classList.remove("hidden");
+        document.getElementById("upload-icon").classList.add("hidden");
+        document.getElementById("upload-spinner").classList.remove("hidden");
+        uploadText.textContent = "A processar foto...";
+
+        const img = await faceapi.bufferToImage(file);
+        refImagePreview.src = img.src;
+        refImagePreview.classList.remove("hidden");
+        refImagePlaceholder.classList.add("hidden");
+
+        const detection = await faceapi
+          .detectSingleFace(img, new faceapi.SsdMobilenetv1Options())
+          .withFaceLandmarks()
+          .withFaceDescriptor();
+
+        if (detection) {
+          const faceAreaRatio =
+            (detection.detection.box.width * detection.detection.box.height) /
+            (img.width * img.height);
+          if (faceAreaRatio < 0.08) {
+            uploadText.textContent = "❌ Foto Inválida";
+            refStatusMsg.textContent =
+              "O rosto está muito longe. Envie uma foto tipo passe.";
+            refStatusMsg.className =
+              "text-xs mt-3 h-4 text-center text-red-400";
+            refImagePreview.classList.add("hidden");
+            refImagePlaceholder.classList.remove("hidden");
+            refUpload.value = "";
+            resetUploadState();
+            return;
+          }
+
+          faceMatcher = new faceapi.FaceMatcher(
+            [
+              new faceapi.LabeledFaceDescriptors("Utilizador", [
+                detection.descriptor,
+              ]),
+            ],
+            0.45,
+          );
+
+          uploadText.textContent = "✓ Foto Registada!";
+          refStatusMsg.textContent = "A preparar câmara...";
+          refStatusMsg.className =
+            "text-xs mt-3 h-4 text-center text-emerald-400";
+
+          setTimeout(() => {
+            startVerificationFlow();
+            resetUploadState();
+          }, 1500);
         } else {
-            // Com token = Mostra loading e inicia processo
-            document.getElementById('status-panel').classList.remove('hidden');
-            window.addEventListener('load', loadModels);
+          uploadText.textContent = "❌ Erro no Registo";
+          refStatusMsg.textContent = "Não encontrámos um rosto claro na foto.";
+          refStatusMsg.className = "text-xs mt-3 h-4 text-center text-red-400";
+          refImagePreview.classList.add("hidden");
+          refImagePlaceholder.classList.remove("hidden");
+          refUpload.value = "";
+          resetUploadState();
         }
+      });
 
-        const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
-        let faceMatcher = null;
-        let webcamStream = null;
-        let detectionTimeout = null;
-        let isSuccessfullyAuthenticated = false;
+      async function startVerificationFlow() {
+        if (!faceMatcher) return;
+        isSuccessfullyAuthenticated = false;
+        stableFramesCount = 0;
+        hasBlinked = false;
+        isEyesClosed = false;
 
-        let lastFaceCenter = { x: 0, y: 0 };
-        let stableFramesCount = 0;
-        const REQUIRED_STABLE_FRAMES = 6; 
-        
-        // VARIÁVEIS DE PROVA DE VIDA (PISCAR OLHOS)
-        let hasBlinked = false;
-        let isEyesClosed = false;
-        const BLINK_THRESHOLD = 0.25; // Limite da abertura do olho para considerar "fechado"
+        stepRegister.classList.add("hidden");
+        stepVerify.classList.remove("hidden");
 
-        const mainApp = document.getElementById('main-app');
-        const stepRegister = document.getElementById('step-register');
-        const refUpload = document.getElementById('ref-upload');
-        const refImagePreview = document.getElementById('ref-image-preview');
-        const refImagePlaceholder = document.getElementById('ref-image-placeholder');
-        const uploadText = document.getElementById('upload-text');
-        const refStatusMsg = document.getElementById('ref-status-msg');
-
-        const stepVerify = document.getElementById('step-verify');
-        const verifyTitle = document.getElementById('verify-title');
-        const verifySubtitle = document.getElementById('verify-subtitle');
-        const instructionBar = document.getElementById('instruction-bar');
-        const webcamVideo = document.getElementById('webcam-video');
-        const faceGuide = document.getElementById('face-guide');
-        const btnAbort = document.getElementById('btn-abort');
-        
-        const successScreen = document.getElementById('success-screen');
-
-        // FUNÇÃO MATEMÁTICA PARA PROVA DE VIDA (Cálculo de Abertura do Olho)
-        function getEuclideanDistance(p1, p2) {
-            return Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+        try {
+          webcamStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: "user" },
+            audio: false,
+          });
+          webcamVideo.srcObject = webcamStream;
+          updateInstructions(
+            "Por favor, posicione-se",
+            "Enquadre o seu rosto na marcação oval.",
+            "normal",
+          );
+        } catch (err) {
+          updateInstructions(
+            "❌ Erro de Câmara",
+            "Não foi possível aceder à sua webcam.",
+            "error",
+          );
         }
+      }
 
-        function getEAR(eye) {
-            // eye[1], eye[5] = pontos verticais
-            // eye[0], eye[3] = pontos horizontais
-            const v1 = getEuclideanDistance(eye[1], eye[5]);
-            const v2 = getEuclideanDistance(eye[2], eye[4]);
-            const h = getEuclideanDistance(eye[0], eye[3]);
-            return (v1 + v2) / (2.0 * h);
+      function updateInstructions(title, subtitle, state) {
+        verifyTitle.textContent = title;
+        verifySubtitle.textContent = subtitle;
+        faceGuide.className = "guide-oval";
+
+        if (state === "error") {
+          instructionBar.className =
+            "absolute top-0 left-0 w-full p-6 bg-gradient-to-b from-red-900/90 to-transparent z-20 transition-colors duration-300 flex flex-col items-center text-center pt-10";
+          verifyTitle.className =
+            "text-2xl font-bold text-red-400 drop-shadow-lg";
+          faceGuide.classList.add("guide-error");
+        } else if (state === "perfect") {
+          instructionBar.className =
+            "absolute top-0 left-0 w-full p-6 bg-gradient-to-b from-emerald-900/90 to-transparent z-20 transition-colors duration-300 flex flex-col items-center text-center pt-10";
+          verifyTitle.className =
+            "text-2xl font-bold text-emerald-400 drop-shadow-lg";
+          faceGuide.classList.add("guide-perfect");
+        } else {
+          instructionBar.className =
+            "absolute top-0 left-0 w-full p-6 bg-gradient-to-b from-black/90 to-transparent z-20 transition-colors duration-300 flex flex-col items-center text-center pt-10";
+          verifyTitle.className =
+            "text-2xl font-bold text-white drop-shadow-lg";
         }
+      }
 
-        function cropFaceToDataURL(source, box, isVideo = false) {
-            const sourceW = isVideo ? source.videoWidth : (source.naturalWidth || source.width);
-            const sourceH = isVideo ? source.videoHeight : (source.naturalHeight || source.height);
-            const centerX = box.x + (box.width / 2);
-            const centerY = box.y + (box.height / 2);
-            const faceSize = Math.max(box.width, box.height);
-            const cropSize = faceSize * 1.8; 
-
-            let startX = centerX - (cropSize / 2);
-            let startY = centerY - (cropSize / 2) - (faceSize * 0.1); 
-
-            const canvas = document.createElement('canvas');
-            canvas.width = cropSize;
-            canvas.height = cropSize;
-            const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#0f172a';
-            ctx.fillRect(0, 0, cropSize, cropSize);
-
-            if (isVideo) {
-                ctx.translate(cropSize, 0);
-                ctx.scale(-1, 1);
-            }
-
-            const sX = Math.max(0, startX);
-            const sY = Math.max(0, startY);
-            const sW = Math.min(sourceW - sX, cropSize - (sX - startX));
-            const sH = Math.min(sourceH - sY, cropSize - (sY - startY));
-            const dX = sX - startX;
-            const dY = sY - startY;
-
-            ctx.drawImage(source, sX, sY, sW, sH, dX, dY, sW, sH);
-            return canvas.toDataURL('image/jpeg', 0.95);
-        }
-
-        async function loadModels() {
-            try {
-                await faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL);
-                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
-                await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
-                await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
-                document.getElementById('status-panel').classList.add('hidden');
-                mainApp.classList.remove('hidden');
-            } catch (err) {
-                document.getElementById('status-title').textContent = "Erro na IA";
-                document.getElementById('status-message').textContent = "Não foi possível carregar os modelos.";
-            }
-        }
-
-        function resetUploadState() {
-            document.getElementById('upload-blocker').classList.add('hidden');
-            document.getElementById('upload-icon').classList.remove('hidden');
-            document.getElementById('upload-spinner').classList.add('hidden');
-            refUpload.disabled = false;
-        }
-
-        refUpload.addEventListener('change', async (e) => {
-            if (!e.target.files.length) return;
-            const file = e.target.files[0];
-            
-            refUpload.disabled = true;
-            document.getElementById('upload-blocker').classList.remove('hidden');
-            document.getElementById('upload-icon').classList.add('hidden');
-            document.getElementById('upload-spinner').classList.remove('hidden');
-            uploadText.textContent = "A processar foto...";
-
-            const img = await faceapi.bufferToImage(file);
-            refImagePreview.src = img.src;
-            refImagePreview.classList.remove('hidden');
-            refImagePlaceholder.classList.add('hidden');
-
-            const detection = await faceapi.detectSingleFace(img, new faceapi.SsdMobilenetv1Options())
-                                           .withFaceLandmarks()
-                                           .withFaceDescriptor();
-
-            if (detection) {
-                const faceAreaRatio = (detection.detection.box.width * detection.detection.box.height) / (img.width * img.height);
-                if (faceAreaRatio < 0.08) {
-                    uploadText.textContent = "❌ Foto Inválida";
-                    refStatusMsg.textContent = "O rosto está muito longe. Envie uma foto tipo passe.";
-                    refStatusMsg.className = "text-xs mt-3 h-4 text-center text-red-400";
-                    refImagePreview.classList.add('hidden');
-                    refImagePlaceholder.classList.remove('hidden');
-                    refUpload.value = '';
-                    resetUploadState();
-                    return;
-                }
-
-                faceMatcher = new faceapi.FaceMatcher([
-                    new faceapi.LabeledFaceDescriptors('Utilizador', [detection.descriptor])
-                ], 0.45); 
-
-                uploadText.textContent = "✓ Foto Registada!";
-                refStatusMsg.textContent = "A preparar câmara...";
-                refStatusMsg.className = "text-xs mt-3 h-4 text-center text-emerald-400";
-                
-                setTimeout(() => {
-                    startVerificationFlow();
-                    resetUploadState(); 
-                }, 1500);
-            } else {
-                uploadText.textContent = "❌ Erro no Registo";
-                refStatusMsg.textContent = "Não encontrámos um rosto claro na foto.";
-                refStatusMsg.className = "text-xs mt-3 h-4 text-center text-red-400";
-                refImagePreview.classList.add('hidden');
-                refImagePlaceholder.classList.remove('hidden');
-                refUpload.value = ''; 
-                resetUploadState(); 
-            }
-        });
-
-        async function startVerificationFlow() {
-            if (!faceMatcher) return;
-            isSuccessfullyAuthenticated = false;
-            stableFramesCount = 0; 
-            hasBlinked = false;
-            isEyesClosed = false;
-            
-            stepRegister.classList.add('hidden');
-            stepVerify.classList.remove('hidden');
-
-            try {
-                webcamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false });
-                webcamVideo.srcObject = webcamStream;
-                updateInstructions("Por favor, posicione-se", "Enquadre o seu rosto na marcação oval.", "normal");
-            } catch (err) {
-                updateInstructions("❌ Erro de Câmara", "Não foi possível aceder à sua webcam.", "error");
-            }
-        }
-
-        function updateInstructions(title, subtitle, state) {
-            verifyTitle.textContent = title;
-            verifySubtitle.textContent = subtitle;
-            faceGuide.className = "guide-oval"; 
-
-            if (state === "error") {
-                instructionBar.className = "absolute top-0 left-0 w-full p-6 bg-gradient-to-b from-red-900/90 to-transparent z-20 transition-colors duration-300 flex flex-col items-center text-center pt-10";
-                verifyTitle.className = "text-2xl font-bold text-red-400 drop-shadow-lg";
-                faceGuide.classList.add("guide-error");
-            } else if (state === "perfect") {
-                instructionBar.className = "absolute top-0 left-0 w-full p-6 bg-gradient-to-b from-emerald-900/90 to-transparent z-20 transition-colors duration-300 flex flex-col items-center text-center pt-10";
-                verifyTitle.className = "text-2xl font-bold text-emerald-400 drop-shadow-lg";
-                faceGuide.classList.add("guide-perfect");
-            } else {
-                instructionBar.className = "absolute top-0 left-0 w-full p-6 bg-gradient-to-b from-black/90 to-transparent z-20 transition-colors duration-300 flex flex-col items-center text-center pt-10";
-                verifyTitle.className = "text-2xl font-bold text-white drop-shadow-lg";
-            }
-        }
-
-        webcamVideo.addEventListener('play', () => {
-            async function detectFrame() {
-                if (webcamVideo.paused || webcamVideo.ended || isSuccessfullyAuthenticated) return;
-                if (webcamVideo.videoWidth) {
-                    const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 });
-                    const detections = await faceapi.detectAllFaces(webcamVideo, options)
-                                                   .withFaceLandmarks()
-                                                   .withFaceDescriptors();
-                    
-                    if (detections.length === 0) {
-                        updateInstructions("Nenhum rosto detetado", "Olhe diretamente para a câmara.", "error");
-                        stableFramesCount = 0;
-                        hasBlinked = false; // Exige piscar novamente se perder o rosto
-                    } else if (detections.length > 1) {
-                        updateInstructions("Várias pessoas detetadas", "Por favor, fique sozinho na câmara.", "error");
-                        stableFramesCount = 0;
-                    } else {
-                        const box = detections[0].detection.box;
-                        const landmarks = detections[0].landmarks;
-                        
-                        const faceCenterX = box.x + (box.width / 2);
-                        const faceCenterY = box.y + (box.height / 2);
-                        const distX = Math.abs((webcamVideo.videoWidth / 2) - faceCenterX);
-                        const distY = Math.abs((webcamVideo.videoHeight / 2) - faceCenterY);
-                        
-                        const isCentered = distX < (webcamVideo.videoWidth * 0.20) && distY < (webcamVideo.videoHeight * 0.20);
-                        const faceHeightRatio = box.height / webcamVideo.videoHeight;
-                        
-                        // 1. VERIFICAR ENQUADRAMENTO
-                        if (!isCentered) {
-                            updateInstructions("Rosto Desalinhado", "Centralize o seu rosto dentro da marcação.", "error");
-                            stableFramesCount = 0;
-                            hasBlinked = false;
-                        } else if (faceHeightRatio < 0.25) { 
-                            updateInstructions("Aproxime-se mais", "Traga o seu rosto para mais perto.", "error");
-                            stableFramesCount = 0;
-                            hasBlinked = false;
-                        } else if (faceHeightRatio > 0.65) { 
-                            updateInstructions("Afaste-se um pouco", "O seu rosto está demasiado perto.", "error");
-                            stableFramesCount = 0;
-                            hasBlinked = false;
-                        } else {
-                            
-                            // 2. PROVA DE VIDA (PISCAR OLHOS)
-                            if (!hasBlinked) {
-                                updateInstructions("Prova de Vida", "Pisque os olhos lentamente.", "normal");
-                                
-                                const leftEye = landmarks.getLeftEye();
-                                const rightEye = landmarks.getRightEye();
-                                const avgEAR = (getEAR(leftEye) + getEAR(rightEye)) / 2.0;
-
-                                if (avgEAR < BLINK_THRESHOLD) {
-                                    isEyesClosed = true;
-                                } else if (isEyesClosed && avgEAR >= BLINK_THRESHOLD) {
-                                    hasBlinked = true; // Piscou!
-                                    isEyesClosed = false;
-                                }
-                                
-                                stableFramesCount = 0; // Impede validação final até piscar
-                                lastFaceCenter = { x: faceCenterX, y: faceCenterY };
-                                
-                            } else {
-                                // 3. ESTABILIZAÇÃO E RECONHECIMENTO BIOMÉTRICO (Só depois de piscar)
-                                const moveDistX = Math.abs(faceCenterX - lastFaceCenter.x);
-                                const moveDistY = Math.abs(faceCenterY - lastFaceCenter.y);
-                                const movementTolerance = webcamVideo.videoWidth * 0.02;
-
-                                if (moveDistX < movementTolerance && moveDistY < movementTolerance) {
-                                    stableFramesCount++;
-                                    if (stableFramesCount < REQUIRED_STABLE_FRAMES) {
-                                        updateInstructions("Mantenha-se imóvel", "A focar a câmara...", "perfect");
-                                    } else {
-                                        updateInstructions("Enquadramento Perfeito", "A validar identidade...", "perfect");
-                                        const match = faceMatcher.findBestMatch(detections[0].descriptor);
-                                        
-                                        if (match.label !== 'unknown') {
-                                            isSuccessfullyAuthenticated = true;
-                                            setTimeout(() => finishProcess('success'), 500);
-                                        } else {
-                                            updateInstructions("Não Reconhecido", "Rosto não corresponde à foto de registo.", "error");
-                                            stableFramesCount = 0; 
-                                            hasBlinked = false; // Obriga a provar de novo em caso de erro
-                                        }
-                                    }
-                                } else {
-                                    stableFramesCount = 0;
-                                    updateInstructions("Quase lá...", "Pare de se mexer para focar a foto.", "normal");
-                                }
-                                lastFaceCenter = { x: faceCenterX, y: faceCenterY };
-                            }
-                        }
-                    }
-                }
-                if (!isSuccessfullyAuthenticated) detectionTimeout = setTimeout(detectFrame, 150); 
-            }
-            detectFrame();
-        });
-
-        // ==========================================
-        // FINALIZAÇÃO E REGRESSO AO WHATSAPP
-        // ==========================================
-        async function finishProcess(status) {
-            stopCamera();
-            stepVerify.classList.add('hidden');
-            successScreen.classList.remove('hidden');
-
-            const isSuccess = status === 'success';
-            
-            if (!isSuccess) {
-                successScreen.classList.replace('border-emerald-500', 'border-red-500');
-                document.getElementById('final-icon-container').classList.replace('bg-emerald-600', 'bg-red-600');
-                document.getElementById('final-icon').innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />';
-                document.getElementById('final-title').textContent = "Validação Cancelada";
-                document.getElementById('final-subtitle').textContent = "O processo foi interrompido.";
-                document.getElementById('final-subtitle').classList.replace('text-emerald-300', 'text-red-300');
-            }
-
-            document.getElementById('final-instruction').textContent = "Clique no botão abaixo para enviar a confirmação ao assistente virtual.";
-            
-            const btnWpp = document.getElementById('btn-return-whatsapp');
-            btnWpp.classList.remove('hidden');
-
-            btnWpp.addEventListener('click', () => {
-                let mensagemFinal = isSuccess ? 
-                    `✅ Biometria Validada! Meu código de segurança é: ${secretCode}` : 
-                    `❌ Não consegui validar a biometria.`;
-                
-                window.location.href = `https://wa.me/${NUMERO_BOT_WHATSAPP}?text=${encodeURIComponent(mensagemFinal)}`;
+      webcamVideo.addEventListener("play", () => {
+        async function detectFrame() {
+          if (
+            webcamVideo.paused ||
+            webcamVideo.ended ||
+            isSuccessfullyAuthenticated
+          )
+            return;
+          if (webcamVideo.videoWidth) {
+            const options = new faceapi.TinyFaceDetectorOptions({
+              inputSize: 224,
+              scoreThreshold: 0.5,
             });
-        }
+            const detections = await faceapi
+              .detectAllFaces(webcamVideo, options)
+              .withFaceLandmarks()
+              .withFaceDescriptors();
 
-        function stopCamera() {
-            if (webcamStream) {
-                webcamStream.getTracks().forEach(track => track.stop());
-                webcamVideo.srcObject = null;
+            if (detections.length === 0) {
+              updateInstructions(
+                "Nenhum rosto detetado",
+                "Olhe diretamente para a câmara.",
+                "error",
+              );
+              stableFramesCount = 0;
+              hasBlinked = false; // Exige piscar novamente se perder o rosto
+            } else if (detections.length > 1) {
+              updateInstructions(
+                "Várias pessoas detetadas",
+                "Por favor, fique sozinho na câmara.",
+                "error",
+              );
+              stableFramesCount = 0;
+            } else {
+              const box = detections[0].detection.box;
+              const landmarks = detections[0].landmarks;
+
+              const faceCenterX = box.x + box.width / 2;
+              const faceCenterY = box.y + box.height / 2;
+              const distX = Math.abs(webcamVideo.videoWidth / 2 - faceCenterX);
+              const distY = Math.abs(webcamVideo.videoHeight / 2 - faceCenterY);
+
+              const isCentered =
+                distX < webcamVideo.videoWidth * 0.2 &&
+                distY < webcamVideo.videoHeight * 0.2;
+              const faceHeightRatio = box.height / webcamVideo.videoHeight;
+
+              // 1. VERIFICAR ENQUADRAMENTO
+              if (!isCentered) {
+                updateInstructions(
+                  "Rosto Desalinhado",
+                  "Centralize o seu rosto dentro da marcação.",
+                  "error",
+                );
+                stableFramesCount = 0;
+                hasBlinked = false;
+              } else if (faceHeightRatio < 0.25) {
+                updateInstructions(
+                  "Aproxime-se mais",
+                  "Traga o seu rosto para mais perto.",
+                  "error",
+                );
+                stableFramesCount = 0;
+                hasBlinked = false;
+              } else if (faceHeightRatio > 0.65) {
+                updateInstructions(
+                  "Afaste-se um pouco",
+                  "O seu rosto está demasiado perto.",
+                  "error",
+                );
+                stableFramesCount = 0;
+                hasBlinked = false;
+              } else {
+                // 2. PROVA DE VIDA (PISCAR OLHOS)
+                if (!hasBlinked) {
+                  updateInstructions(
+                    "Prova de Vida",
+                    "Pisque os olhos lentamente.",
+                    "normal",
+                  );
+
+                  const leftEye = landmarks.getLeftEye();
+                  const rightEye = landmarks.getRightEye();
+                  const avgEAR = (getEAR(leftEye) + getEAR(rightEye)) / 2.0;
+
+                  if (avgEAR < BLINK_THRESHOLD) {
+                    isEyesClosed = true;
+                  } else if (isEyesClosed && avgEAR >= BLINK_THRESHOLD) {
+                    hasBlinked = true; // Piscou!
+                    isEyesClosed = false;
+                  }
+
+                  stableFramesCount = 0; // Impede validação final até piscar
+                  lastFaceCenter = { x: faceCenterX, y: faceCenterY };
+                } else {
+                  // 3. ESTABILIZAÇÃO E RECONHECIMENTO BIOMÉTRICO (Só depois de piscar)
+                  const moveDistX = Math.abs(faceCenterX - lastFaceCenter.x);
+                  const moveDistY = Math.abs(faceCenterY - lastFaceCenter.y);
+                  const movementTolerance = webcamVideo.videoWidth * 0.02;
+
+                  if (
+                    moveDistX < movementTolerance &&
+                    moveDistY < movementTolerance
+                  ) {
+                    stableFramesCount++;
+                    if (stableFramesCount < REQUIRED_STABLE_FRAMES) {
+                      updateInstructions(
+                        "Mantenha-se imóvel",
+                        "A focar a câmara...",
+                        "perfect",
+                      );
+                    } else {
+                      updateInstructions(
+                        "Enquadramento Perfeito",
+                        "A validar identidade...",
+                        "perfect",
+                      );
+                      const match = faceMatcher.findBestMatch(
+                        detections[0].descriptor,
+                      );
+
+                      if (match.label !== "unknown") {
+                        isSuccessfullyAuthenticated = true;
+                        setTimeout(() => finishProcess("success"), 500);
+                      } else {
+                        updateInstructions(
+                          "Não Reconhecido",
+                          "Rosto não corresponde à foto de registo.",
+                          "error",
+                        );
+                        stableFramesCount = 0;
+                        hasBlinked = false; // Obriga a provar de novo em caso de erro
+                      }
+                    }
+                  } else {
+                    stableFramesCount = 0;
+                    updateInstructions(
+                      "Quase lá...",
+                      "Pare de se mexer para focar a foto.",
+                      "normal",
+                    );
+                  }
+                  lastFaceCenter = { x: faceCenterX, y: faceCenterY };
+                }
+              }
             }
-            if (detectionTimeout) clearTimeout(detectionTimeout);
-            stableFramesCount = 0; 
-            hasBlinked = false;
+          }
+          if (!isSuccessfullyAuthenticated)
+            detectionTimeout = setTimeout(detectFrame, 150);
+        }
+        detectFrame();
+      });
+
+      // ==========================================
+      // FINALIZAÇÃO E REGRESSO AO WHATSAPP
+      // ==========================================
+      async function finishProcess(status) {
+        stopCamera();
+        stepVerify.classList.add("hidden");
+        successScreen.classList.remove("hidden");
+
+        const isSuccess = status === "success";
+
+        if (!isSuccess) {
+          successScreen.classList.replace(
+            "border-emerald-500",
+            "border-red-500",
+          );
+          document
+            .getElementById("final-icon-container")
+            .classList.replace("bg-emerald-600", "bg-red-600");
+          document.getElementById("final-icon").innerHTML =
+            '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />';
+          document.getElementById("final-title").textContent =
+            "Validação Cancelada";
+          document.getElementById("final-subtitle").textContent =
+            "O processo foi interrompido.";
+          document
+            .getElementById("final-subtitle")
+            .classList.replace("text-emerald-300", "text-red-300");
         }
 
-        btnAbort.addEventListener('click', () => {
-            isSuccessfullyAuthenticated = true; 
-            finishProcess('failed');
-        });
+        document.getElementById("final-instruction").textContent =
+          "Clique no botão abaixo para enviar a confirmação ao assistente virtual.";
 
+        const btnWpp = document.getElementById("btn-return-whatsapp");
+        btnWpp.classList.remove("hidden");
+
+        btnWpp.addEventListener("click", () => {
+          let mensagemFinal = isSuccess
+            ? `✅ Biometria Validada! Meu código de segurança é: ${secretCode}`
+            : `❌ Não consegui validar a biometria.`;
+
+          window.location.href = `https://wa.me/${NUMERO_BOT_WHATSAPP}?text=${encodeURIComponent(mensagemFinal)}`;
+        });
+      }
+
+      function stopCamera() {
+        if (webcamStream) {
+          webcamStream.getTracks().forEach((track) => track.stop());
+          webcamVideo.srcObject = null;
+        }
+        if (detectionTimeout) clearTimeout(detectionTimeout);
+        stableFramesCount = 0;
+        hasBlinked = false;
+      }
+
+      btnAbort.addEventListener("click", () => {
+        isSuccessfullyAuthenticated = true;
+        finishProcess("failed");
+      });
     </script>
-</body>
+  </body>
 </html>
